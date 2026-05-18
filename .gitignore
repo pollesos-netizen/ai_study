@@ -1,0 +1,38 @@
+# 가상환경
+.venv/
+venv/
+env/
+
+# Python 캐시
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 학습된 모델 파일 (용량 큰 경우 제외)
+models/*.pkl
+models/*.h5
+models/*.pt
+models/*.bin
+
+# Jupyter Notebook 체크포인트
+notebooks/.ipynb_checkpoints/
+.ipynb_checkpoints/
+
+# 데이터 파일 (실제 개인정보 포함 가능성 있는 원본 데이터 제외)
+# data/raw/
+# 샘플 데이터(가명·가상)는 포함 — 아래 주석 처리 유지
+# data/*.csv
+
+# 보고서 산출물 (필요시 제외)
+# reports/
+
+# VS Code 설정
+.vscode/
+
+# 환경변수·API 키
+.env
+*.env
+
+# OS 파일
+.DS_Store
+Thumbs.db
