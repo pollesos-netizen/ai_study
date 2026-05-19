@@ -4,6 +4,7 @@ from typing import Any
 
 import joblib
 
+from document_units import Detection, TextUnit, detection_from_ai_result, detections_to_dicts, get_document_grade
 from regex_detector import DetectionResult, detect_patterns, get_max_grade
 
 
@@ -123,6 +124,97 @@ def hybrid_classify(text: str, ai_model) -> dict[str, Any]:
         "regex_results": summarize_regex_results(regex_results),
     }
 
+def hybrid_classify_text_unit(text_unit: TextUnit, ai_model) -> list[Detection]:
+    """
+    위치 정보를 가진 TextUnit을 분석해 Detection 목록을 반환합니다.
+
+    기존 hybrid_classify()는 문자열 text만 분석합니다.
+    이 함수는 TextUnit을 입력받아 다음 정보를 Detection 결과에 함께 붙입니다.
+
+    - location_label: 사용자에게 보여줄 위치
+    - location_meta: 비식별화/원문 수정용 내부 위치 정보
+
+    처리 원칙:
+    1. 정규식 탐지 결과가 있으면 정규식 Detection을 생성합니다.
+    2. 정규식 탐지 결과가 없고 AI가 O가 아닌 등급으로 판단하면 AI Detection을 생성합니다.
+    3. 정규식 탐지 없음 + AI 일반(O)이면 Detection을 생성하지 않습니다.
+    """
+    result = hybrid_classify(text_unit.text, ai_model)
+
+    detections: list[Detection] = []
+
+    for item in result["regex_results"]:
+        detections.append(
+            Detection(
+                label=item["label"],
+                matched=item["value"],
+                grade=item["grade"],
+                action=item["action"],
+                source="regex",
+                context=text_unit.text,
+                location_label=text_unit.location_label,
+                location_meta=text_unit.location_meta,
+                start=item["start"],
+                end=item["end"],
+                reason=item["desc"],
+            )
+        )
+
+    if not result["regex_results"] and result["final_cso_grade"] != "O":
+        detections.append(
+            detection_from_ai_result(
+                label=result["ai_label"],
+                grade=result["final_cso_grade"],
+                text_unit=text_unit,
+                action="검토 필요",
+                reason=result["decision_reason"],
+            )
+        )
+
+    return detections
+
+def analyze_text_units(text_units: list[TextUnit], ai_model) -> list[Detection]:
+    """
+    여러 TextUnit을 순회하면서 Detection 목록을 생성합니다.
+
+    문서 파서가 만든 TextUnit 목록을 입력받아
+    각 TextUnit별로 정규식/AI 탐지를 수행하고,
+    위치 정보가 포함된 Detection 목록을 반환합니다.
+    """
+    detections: list[Detection] = []
+
+    for text_unit in text_units:
+        detections.extend(hybrid_classify_text_unit(text_unit, ai_model))
+
+    return detections
+
+def print_detections(detections: list[Detection]) -> None:
+    """
+    Detection 목록을 콘솔에서 보기 좋게 출력합니다.
+    """
+    if not detections:
+        print("탐지 결과: 없음")
+        return
+
+    print("\n탐지 결과:")
+
+    for index, detection in enumerate(detections, start=1):
+        print(f"\n[{index}] {detection.location_label}")
+        print(f"  - 탐지 항목: {detection.label}")
+        print(f"  - 탐지 값: {detection.matched if detection.matched else '문장 전체 판단'}")
+        print(f"  - 등급: {detection.grade}")
+        print(f"  - 조치: {detection.action}")
+        print(f"  - 탐지 방식: {detection.source}")
+        print(f"  - 문맥: {detection.context}")
+
+        if detection.sensitive_type:
+            print(f"  - 민감정보 유형: {detection.sensitive_type}")
+
+        if detection.sensitive_category:
+            print(f"  - 세부 분류: {detection.sensitive_category}")
+
+        if detection.reason:
+            print(f"  - 판단 근거: {detection.reason}")
 
 def format_regex_grade(regex_grade: str | None) -> str:
     """출력용 정규식 등급 문구를 반환합니다."""
@@ -179,3 +271,42 @@ if __name__ == "__main__":
     for sample in samples:
         result = hybrid_classify(sample, ai_model)
         print_hybrid_result(result)
+        print("\n\n=== TextUnit 기반 탐지 테스트 ===")
+
+    text_units = [
+        TextUnit(
+            text="담당자 이메일은 test@example.com입니다.",
+            location_label="계약내역 탭 B12 셀",
+            location_meta={
+                "fileType": "xlsx",
+                "sheetName": "계약내역",
+                "cellRef": "B12",
+                "row": 12,
+                "col": 2,
+            },
+        ),
+        TextUnit(
+            text="서버 IP는 192.168.0.1이고 VLAN 100을 사용합니다.",
+            location_label="시스템정보 탭 C3 셀",
+            location_meta={
+                "fileType": "xlsx",
+                "sheetName": "시스템정보",
+                "cellRef": "C3",
+                "row": 3,
+                "col": 3,
+            },
+        ),
+        TextUnit(
+            text="입찰 제안 평가표를 검토했습니다.",
+            location_label="17번째 문단",
+            location_meta={
+                "fileType": "docx",
+                "paragraphNo": 17,
+            },
+        ),
+    ]
+
+    detections = analyze_text_units(text_units, ai_model)
+
+    print_detections(detections)
+    print("\n문서 전체 최고 등급:", get_document_grade(detections))
