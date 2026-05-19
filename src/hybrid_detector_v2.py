@@ -271,7 +271,8 @@ if __name__ == "__main__":
     for sample in samples:
         result = hybrid_classify(sample, ai_model)
         print_hybrid_result(result)
-        print("\n\n=== TextUnit 기반 탐지 테스트 ===")
+    
+    print("\n\n=== TextUnit 기반 탐지 테스트 ===")
 
     text_units = [
         TextUnit(
