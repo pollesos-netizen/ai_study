@@ -129,11 +129,20 @@ def detection_order(detection: dict[str, Any]) -> int:
 
 def same_location(a: dict[str, Any], b: dict[str, Any]) -> bool:
     """
-    같은 TextUnit 또는 같은 위치인지 간단히 판정합니다.
+    같은 TextUnit 또는 같은 위치인지 판정합니다.
 
-    10주차에서는 locationLabel이 같으면 같은 위치로 봅니다.
-    locationLabel이 없으면 context가 같은 경우 같은 위치로 봅니다.
+    locationMeta가 있으면 locationMeta를 우선 비교합니다.
+    locationMeta는 11주차 Apply 단계에서 실제 원문 위치를 찾아가는 기준이므로,
+    겹침 판정에서도 locationMeta를 우선 사용합니다.
+
+    locationMeta가 없으면 locationLabel, context 순서로 fallback합니다.
     """
+    a_meta = a.get("locationMeta")
+    b_meta = b.get("locationMeta")
+
+    if a_meta and b_meta:
+        return a_meta == b_meta
+
     a_location = a.get("locationLabel")
     b_location = b.get("locationLabel")
 
@@ -301,45 +310,73 @@ def detection_to_target(detection: dict[str, Any]) -> DeidentifyTarget:
     )
 
 
+def location_key_for_target(target: DeidentifyTarget) -> str:
+    """
+    정렬 및 묶음 처리를 위한 위치 키를 생성합니다.
+
+    locationMeta를 우선 사용하고, 없으면 locationLabel, context 순서로 fallback합니다.
+    """
+    if target.location_meta:
+        return repr(sorted(target.location_meta.items()))
+
+    if target.location_label is not None:
+        return f"label:{target.location_label}"
+
+    if target.context is not None:
+        return f"context:{target.context}"
+
+    return f"order:{target.order}"
+
+
 def sort_targets(targets: list[DeidentifyTarget]) -> list[DeidentifyTarget]:
     """
     DeidentifyTarget 목록을 표시 순서대로 정렬합니다.
 
-    1. 입력 순서
-    2. start 오름차순
-    3. start가 None이면 뒤쪽
+    1. location의 첫 등장 순서
+    2. 같은 location 내부에서는 start 오름차순
+    3. start가 None인 target은 같은 location의 뒤쪽
+
+    실제 Apply 단계에서는 같은 location 내부에서 start 내림차순으로 적용해야 합니다.
+    이 정렬은 사용자 표시와 계획 검토용 정렬입니다.
     """
+    first_order_by_location: dict[str, int] = {}
+
+    for target in targets:
+        key = location_key_for_target(target)
+
+        if key not in first_order_by_location:
+            first_order_by_location[key] = target.order
+
     return sorted(
         targets,
         key=lambda target: (
-            target.order,
+            first_order_by_location.get(location_key_for_target(target), target.order),
             target.start is None,
             target.start if target.start is not None else 10**9,
         ),
     )
 
 
-def calculate_summary_grade(detections: list[dict[str, Any]]) -> str | None:
+def calculate_summary_grade_from_targets(
+    auto_targets: list[DeidentifyTarget],
+    review_targets: list[DeidentifyTarget],
+) -> str | None:
     """
     부가 요약값으로 최고 등급을 계산합니다.
 
-    핵심 산출물은 아니며, 표시용 보조 정보입니다.
+    입력 Detection 전체가 아니라, 최종 DeidentifyPlan에 남은 target 기준으로 계산합니다.
+    grade가 None인 target은 제외합니다.
     """
-    if not detections:
+    grades = [
+        target.grade
+        for target in [*auto_targets, *review_targets]
+        if target.grade
+    ]
+
+    if not grades:
         return None
 
-    best_grade = None
-    best_priority = -1
-
-    for detection in detections:
-        grade = detection.get("grade")
-        priority = grade_priority(grade)
-
-        if priority > best_priority:
-            best_priority = priority
-            best_grade = grade
-
-    return best_grade
+    return max(grades, key=grade_priority)
 
 
 def build_deidentify_plan(
@@ -380,5 +417,8 @@ def build_deidentify_plan(
     return DeidentifyPlan(
         auto_targets=auto_targets,
         review_targets=review_targets,
-        summary_grade=calculate_summary_grade(ordered_detections),
+        summary_grade=calculate_summary_grade_from_targets(
+            auto_targets,
+            review_targets,
+        ),
     )

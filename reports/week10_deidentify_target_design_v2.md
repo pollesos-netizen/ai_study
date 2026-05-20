@@ -1,4 +1,4 @@
-# 10주차 비식별화 대상 계획 수립 설계 및 테스트 결과
+# 10주차 비식별화 대상 계획 수립 설계 및 테스트 결과 v2
 
 ## 1. 목적
 
@@ -63,8 +63,7 @@ DeidentifyPlan(
 )
 ```
 
-다만 `summary_grade`는 부가 요약값이다.  
-핵심은 `auto_targets`와 `review_targets`이다.
+다만 `summary_grade`는 부가 요약값이다. 핵심은 `auto_targets`와 `review_targets`이다.
 
 ---
 
@@ -127,6 +126,8 @@ class DeidentifyPlan:
 | `auto_targets` | start/end와 matched가 있어 자동 비식별화 가능한 대상 |
 | `review_targets` | AI 문장판단 등 자동 수정 전에 검토가 필요한 대상 |
 | `summary_grade` | 부가 요약값. 핵심 산출물은 아님 |
+
+`summary_grade`는 입력 Detection 전체가 아니라, 최종 `auto_targets`와 `review_targets`에 남은 target 기준으로 계산한다. `grade=None`인 target은 summary 계산에서 제외한다.
 
 ---
 
@@ -218,31 +219,71 @@ def spans_overlap(a_start, a_end, b_start, b_end) -> bool:
 
 AI Detection은 `start/end=None`일 수 있으므로 위치 겹침 판정 대상에서 제외한다.
 
+### 위치 동일성 판정 기준
+
+같은 위치인지 판단할 때는 `locationLabel`보다 `locationMeta`를 우선 사용한다.
+
+`locationLabel`은 사용자 표시용 문자열이므로, 문서 파서 또는 UI 표현 방식이 바뀌면 동일 위치 비교가 흔들릴 수 있다. 반면 `locationMeta`는 11주차 Apply 단계에서 실제 원문 위치를 찾아가는 기준이므로, 겹침 판정에서도 우선 사용한다.
+
+판정 순서는 다음과 같다.
+
+```python
+def same_location(a, b):
+    a_meta = a.get("locationMeta")
+    b_meta = b.get("locationMeta")
+
+    if a_meta and b_meta:
+        return a_meta == b_meta
+
+    a_location = a.get("locationLabel")
+    b_location = b.get("locationLabel")
+
+    if a_location is not None or b_location is not None:
+        return a_location == b_location
+
+    return a.get("context") == b.get("context")
+```
+
+즉, 위치 비교 우선순위는 다음과 같다.
+
+```text
+locationMeta → locationLabel → context
+```
+
 ---
 
-## 8. 같은 source 내 겹침 처리
+## 8. 겹침 Detection 선택 기준
 
-같은 source 안에서도 겹침이 생길 수 있다.
-
-예:
+겹침 Detection이 발생하면 다음 통합 우선순위를 적용한다.
 
 ```text
-phone 패턴과 다른 숫자 패턴이 같은 구간을 잡는 경우
+1. source 우선순위
+   regex > ner > ai
+
+2. grade 우선순위
+   C > S > O
+
+3. matched 길이
+   긴 쪽 우선
+
+4. 입력 순서
+   먼저 들어온 Detection 우선
 ```
 
-같은 source 내 겹침은 다음 기준으로 처리한다.
+이 기준은 서로 다른 source 간 겹침과 같은 source 내 겹침에 모두 적용한다.
+
+예를 들어 regex와 ner가 같은 위치를 탐지하면 source 우선순위에 따라 regex를 유지한다.
 
 ```text
-1. 등급이 높은 Detection 유지
-2. 등급이 같으면 matched 길이가 긴 Detection 유지
-3. 그래도 같으면 먼저 들어온 Detection 유지
+regex: test@example.com (9,25)
+ner:   test (9,13)
+
+결과:
+regex 유지
+ner 흡수
 ```
 
-등급 우선순위:
-
-```text
-C > S > O
-```
+같은 source 안에서 겹침이 발생하면 source 우선순위가 같으므로 grade, matched 길이, 입력 순서 순으로 비교한다.
 
 ---
 
@@ -264,17 +305,43 @@ TC4, TC9 테스트에서 이 정책이 정상 동작하는 것을 확인했다.
 
 ## 10. 정렬 규칙
 
-10주차에서는 별도 문서 순서 계산을 새로 만들지 않는다.
+10주차의 정렬은 사용자 표시와 계획 검토를 위한 정렬이다.
 
-정렬 정책은 다음과 같다.
+정렬 기준은 다음과 같다.
 
 ```text
-1. 입력 Detection 순서, 즉 TextUnit 처리 순서를 우선한다.
-2. 같은 location에서는 start 오름차순으로 정렬한다.
-3. start가 None인 AI Detection은 해당 TextUnit의 뒤쪽에 둔다.
+1. location의 첫 등장 순서
+2. 같은 location 내부에서는 start 오름차순
+3. start가 None인 target은 같은 location의 뒤쪽
 ```
 
-이를 위해 `order` 필드를 둔다.
+location을 묶는 기준은 `same_location()`과 동일하게 `locationMeta → locationLabel → context` 순서를 따른다.
+
+예를 들어 입력 순서가 다음과 같더라도:
+
+```text
+[0] location=A, start=10
+[1] location=B, start=5
+[2] location=A, start=3
+```
+
+표시 순서는 다음과 같이 정리한다.
+
+```text
+location=A, start=3
+location=A, start=10
+location=B, start=5
+```
+
+다만 11주차 Apply 단계에서 실제 문자열 치환을 수행할 때는 같은 location 내부에서 `start 내림차순`으로 적용해야 한다. 앞쪽 문자열을 먼저 치환하면 뒤쪽 start/end 위치가 어긋날 수 있기 때문이다.
+
+```text
+10주차 표시 정렬:
+location 순서 → start 오름차순
+
+11주차 적용 순서:
+같은 location 내부 → start 내림차순
+```
 
 ---
 
@@ -293,15 +360,18 @@ notebooks/11_test_deidentify_target_builder.py
 DeidentifyTarget dataclass
 DeidentifyPlan dataclass
 spans_overlap()
+same_location()
 source_priority()
 grade_priority()
 choose_better_detection()
 deduplicate_auto_detections()
 detection_to_target()
+sort_targets()
+calculate_summary_grade_from_targets()
 build_deidentify_plan()
 ```
 
-`notebooks/11_test_deidentify_target_builder.py`는 TC1~TC9 시나리오를 검증한다.
+`notebooks/11_test_deidentify_target_builder.py`는 TC1~TC10 시나리오를 검증한다.
 
 테스트 헬퍼 함수명은 의미가 드러나도록 다음과 같이 정리했다.
 
@@ -327,6 +397,7 @@ make_ai_detection()
 | TC7 | 빈 Detection 목록 | 빈 결과 | 정상 |
 | TC8 | 같은 TextUnit에 regex 2개 | auto_targets 2개 | 정상 |
 | TC9 | 부분 겹침 regex 이메일 + ner 오탐 | regex만 auto_targets 1개 | 정상 |
+| TC10 | 같은 location에 regex 2개가 start 역순으로 입력됨 | start 오름차순으로 출력 | 정상 |
 
 ---
 
@@ -343,8 +414,6 @@ review_targets: 0
 
 regex 기반 탐지는 start/end와 matched가 있으므로 자동 비식별화 대상으로 분류되었다.
 
----
-
 ### TC2. ner만 있는 TextUnit
 
 ```text
@@ -356,8 +425,6 @@ review_targets: 0
 
 NER 기반 성명 탐지도 start/end와 matched가 있으므로 자동 비식별화 대상으로 분류되었다.
 
----
-
 ### TC3. ai만 있는 TextUnit
 
 ```text
@@ -368,8 +435,6 @@ review_targets: 1
 ```
 
 AI Detection은 문장 전체 판단이며 start/end가 없으므로 검토 필요 대상으로 분류되었다.
-
----
 
 ### TC4. regex + ner 같은 위치
 
@@ -383,8 +448,6 @@ review_targets: 0
 
 같은 위치에서 regex와 ner가 동시에 탐지된 경우, source 우선순위에 따라 regex를 유지하고 ner를 흡수했다.
 
----
-
 ### TC5. regex + ai 같은 TextUnit
 
 ```text
@@ -395,8 +458,6 @@ review_targets: 1
 ```
 
 regex는 자동 비식별화 대상, ai는 검토 필요 대상으로 분리되었다.
-
----
 
 ### TC6. ner + ai 같은 TextUnit
 
@@ -409,8 +470,6 @@ review_targets: 1
 
 NER 성명 탐지는 자동 비식별화 대상, AI 문장 판단은 검토 필요 대상으로 분리되었다.
 
----
-
 ### TC7. 빈 Detection 목록
 
 ```text
@@ -420,8 +479,6 @@ review_targets: 0
 ```
 
 탐지 결과가 없으면 빈 계획을 생성한다.
-
----
 
 ### TC8. 같은 TextUnit에 regex 2개
 
@@ -435,8 +492,6 @@ review_targets: 0
 
 서로 위치가 겹치지 않는 regex 탐지는 모두 유지된다.
 
----
-
 ### TC9. 부분 겹침 regex 이메일 + ner PERSON 일부 오탐
 
 ```text
@@ -448,6 +503,20 @@ review_targets: 0
 ```
 
 부분 겹침이 발생한 경우에도 source 우선순위에 따라 regex를 유지하고 ner 오탐을 제거했다.
+
+### TC10. 같은 location에 regex 2개가 start 역순으로 입력
+
+```text
+입력 순서:
+1. 내부 IP 주소 / 192.168.0.1 (35,46)
+2. 이메일 주소 / test@example.com (9,25)
+
+출력 순서:
+1. 이메일 주소 / test@example.com (9,25)
+2. 내부 IP 주소 / 192.168.0.1 (35,46)
+```
+
+같은 location 내부에서는 입력 순서가 아니라 start 오름차순으로 정렬되는 것을 확인했다.
 
 ---
 
@@ -477,6 +546,16 @@ d() → make_detection()
 ai_detection() → make_ai_detection()
 ```
 
+추가 보완 사항은 다음과 같다.
+
+```text
+1. same_location()에서 locationMeta를 우선 비교하도록 수정했다.
+2. sort_targets()를 location 첫 등장 순서 + 같은 location 내 start 오름차순 기준으로 수정했다.
+3. summary_grade를 입력 Detection 전체가 아니라 최종 auto/review target 기준으로 계산하도록 수정했다.
+4. 겹침 Detection 선택 기준을 source → grade → matched 길이 → 입력 순서의 통합 우선순위로 정리했다.
+5. TC10을 추가하여 같은 location 내 정렬이 정상 동작하는지 검증했다.
+```
+
 ---
 
 ## 15. 현재 10주차 완료 범위
@@ -490,7 +569,10 @@ ai_detection() → make_ai_detection()
 4. start/end 겹침 제거
 5. 같은 source 내 겹침 처리 기준 구현
 6. reason 누적 정책 구현
-7. TC1~TC9 테스트 통과
+7. locationMeta 우선 위치 비교
+8. 같은 location 내 start 오름차순 정렬
+9. 최종 target 기준 summary_grade 계산
+10. TC1~TC10 테스트 통과
 ```
 
 아직 하지 않은 것:
@@ -545,6 +627,18 @@ Detection 목록
 7. 자동 비식별화 대상과 검토 필요 대상을 UI에서 분리 표시
 ```
 
+11주차 Apply 단계에서 주의할 점은 다음과 같다.
+
+```text
+1. 같은 TextUnit 또는 같은 location 내 target은 start 내림차순으로 적용한다.
+2. 같은 TextUnit 내 모든 auto_target을 한 번에 처리한다.
+3. review_targets는 자동 적용하지 않고 사용자 검토 대상으로 분리한다.
+4. xlsx, docx, pptx, hwpx는 파일 구조가 다르므로 fileType별 Apply 함수를 분리한다.
+5. 우선 단일 문자열 또는 단일 파일 형식부터 PoC로 구현한 뒤 확장한다.
+```
+
+특히 문자열 치환은 앞쪽부터 적용하면 뒤쪽 target의 start/end가 어긋날 수 있으므로, 같은 location 내부에서는 반드시 뒤쪽 target부터 적용해야 한다.
+
 11주차 이후의 핵심은 다음이다.
 
 ```text
@@ -552,20 +646,3 @@ DeidentifyPlan
 → 실제 문서 원문 수정
 → 비식별화된 문서 생성
 ```
-
-## NER 모델 선정 관련 유의사항
-
-10주차의 `DeidentifyPlan` 생성 구조는 특정 NER 모델에 종속되지 않는다.  
-NER 모델이 `PS`, `PER`, `PERSON` 등 어떤 라벨을 사용하더라도, 9주차의 `korean_ner_adapter.py`에서 내부 표준 라벨 `PERSON`으로 변환되면 동일한 방식으로 처리된다.
-
-다만 현재 실제 테스트는 `Leo97/KoELECTRA-small-v3-modu-ner` 1종으로만 수행되었다.  
-따라서 `DeidentifyPlan` 구조는 확정할 수 있지만, 성명 탐지용 NER 모델 선정은 아직 확정 단계가 아니다.
-
-향후 다른 한국어 NER 모델을 비교하여 다음을 확인해야 한다.
-
-```text
-성명 탐지 정확도
-성명 오탐/미탐
-confidence 분포
-threshold=0.8 적정성
-온프레미스 실행 가능성

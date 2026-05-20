@@ -195,6 +195,36 @@ def main() -> None:
         ],
     )
 
+    print_plan(
+        "TC10 같은 location에 regex 2개 start 역순 입력",
+        [
+            make_detection(
+                "내부 IP 주소",
+                "192.168.0.1",
+                "regex",
+                35,
+                46,
+                grade="C",
+                action="삭제",
+                context="담당자 이메일은 test@example.com이고 서버 IP는 192.168.0.1입니다.",
+                location_label="시스템정보 탭 C3 셀",
+                reason="정규식 내부 IP 탐지",
+            ),
+            make_detection(
+                "이메일 주소",
+                "test@example.com",
+                "regex",
+                9,
+                25,
+                grade="S",
+                action="마스킹",
+                context="담당자 이메일은 test@example.com이고 서버 IP는 192.168.0.1입니다.",
+                location_label="시스템정보 탭 C3 셀",
+                reason="정규식 이메일 탐지",
+            ),
+        ],
+    )
+
     print("\n=== 테스트 완료 ===")
 
 
