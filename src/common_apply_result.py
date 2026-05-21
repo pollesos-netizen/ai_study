@@ -3,6 +3,10 @@
 
 목적:
 - xlsx, docx, pptx, hwpx 등 파일 형식별 Apply 결과를 프론트엔드가 동일한 구조로 받을 수 있게 합니다.
+
+applyMode:
+- "applied": 시스템이 실제 파일을 수정해 결과 파일을 생성한 경우 (예: xlsx)
+- "guide":   시스템은 탐지/위치/조치 안내만 제공하고 사용자가 직접 수정하는 경우 (예: docx, pptx, hwpx)
 """
 
 from __future__ import annotations
@@ -11,8 +15,27 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+APPLY_MODE_APPLIED = "applied"
+APPLY_MODE_GUIDE = "guide"
+
+
 @dataclass
 class CommonApplyItem:
+    """
+    파일 형식 공통 Apply 결과의 단위 항목.
+
+    중요:
+    - applyMode="applied" 모드에서는 appliedText가 실제 적용 결과를 의미합니다.
+    - applyMode="guide" 모드에서는 appliedText가 실제 적용 결과가 아니라
+      권장 preview 문자열을 의미합니다.
+    - guide 모드에서 appliedTargetCount는 "권장 가능 target 수",
+      skippedTargetCount는 "권장 불가 target 수"로 해석합니다.
+
+    프론트엔드 표시 규칙:
+    - applied 모드: "적용 결과", "적용된 항목"
+    - guide 모드:   "권장 결과", "권장 항목", "권장 불가"
+    """
+
     locationLabel: str | None
     locationMeta: dict[str, Any]
     label: str
@@ -83,6 +106,14 @@ class CommonApplySummary:
 
 @dataclass
 class CommonApplyResult:
+    """
+    파일 형식 공통 Apply 결과.
+
+    applyMode:
+    - "applied": outputFilePath에 실제 비식별화된 파일이 저장됨
+    - "guide":   outputFilePath는 None. 사용자가 원본 파일을 직접 수정해야 함
+    """
+
     fileType: str
     inputFilePath: str
     outputFilePath: str | None
@@ -90,10 +121,12 @@ class CommonApplyResult:
     reviewTargets: list[CommonReviewItem]
     warnings: list[str]
     summary: CommonApplySummary
+    applyMode: str = APPLY_MODE_APPLIED
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "fileType": self.fileType,
+            "applyMode": self.applyMode,
             "inputFilePath": self.inputFilePath,
             "outputFilePath": self.outputFilePath,
             "autoResults": [item.to_dict() for item in self.autoResults],

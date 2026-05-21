@@ -4,13 +4,19 @@ xlsx 파일 단위 비식별화 Apply
 목적:
 - DeidentifyPlan의 xlsx auto_targets를 실제 xlsx 파일 셀 값에 적용합니다.
 - 결과는 파일 형식 공통 구조인 CommonApplyResult로 반환합니다.
+
+13주차 리팩토링:
+- common_apply_utils.py의 공통 함수를 사용합니다.
+- CommonApplyResult.applyMode="applied"를 명시합니다.
+- 빈 문자열 셀 처리 분기를 추가했습니다.
+- Apply 후 cell.data_type="s"로 문자열 셀 유지합니다.
+- 코드화된 warning type을 사용합니다.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-import unicodedata
 
 from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
@@ -20,50 +26,58 @@ from openpyxl.utils.cell import coordinate_to_tuple
 
 try:
     from src.common_apply_result import (
+        APPLY_MODE_APPLIED,
         CommonApplyItem,
         CommonApplyResult,
         build_summary,
         make_review_items,
+    )
+    from src.common_apply_utils import (
+        WARNING_CONTEXT_MISMATCH,
+        WARNING_EMPTY_CELL,
+        WARNING_FORMULA_CELL,
+        WARNING_MERGED_CELL_NOT_TOP_LEFT,
+        WARNING_MISSING_CELL_REF,
+        WARNING_MISSING_SHEET_NAME,
+        WARNING_NON_STRING_CELL,
+        WARNING_SHEET_NOT_FOUND,
+        actions_for_targets,
+        format_warning,
+        labels_for_targets,
+        make_output_path,
+        make_status,
+        normalize_nfc,
+        validate_slice_against_text,
     )
     from src.deidentify_apply import apply_targets_to_text
     from src.deidentify_target_builder import DeidentifyPlan, DeidentifyTarget
 except ModuleNotFoundError:
     from common_apply_result import (
+        APPLY_MODE_APPLIED,
         CommonApplyItem,
         CommonApplyResult,
         build_summary,
         make_review_items,
     )
+    from common_apply_utils import (
+        WARNING_CONTEXT_MISMATCH,
+        WARNING_EMPTY_CELL,
+        WARNING_FORMULA_CELL,
+        WARNING_MERGED_CELL_NOT_TOP_LEFT,
+        WARNING_MISSING_CELL_REF,
+        WARNING_MISSING_SHEET_NAME,
+        WARNING_NON_STRING_CELL,
+        WARNING_SHEET_NOT_FOUND,
+        actions_for_targets,
+        format_warning,
+        labels_for_targets,
+        make_output_path,
+        make_status,
+        normalize_nfc,
+        validate_slice_against_text,
+    )
     from deidentify_apply import apply_targets_to_text
     from deidentify_target_builder import DeidentifyPlan, DeidentifyTarget
-
-
-def normalize_nfc(value: Any) -> str:
-    return unicodedata.normalize("NFC", str(value))
-
-
-def make_output_path(input_path: str | Path, output_path: str | Path | None = None) -> str:
-    """
-    output_path가 없으면 original_deidentified.xlsx 규칙으로 생성합니다.
-    기존 파일이 있으면 _1, _2 suffix를 붙입니다.
-    """
-    if output_path is not None:
-        return str(output_path)
-
-    input_path = Path(input_path)
-    base = input_path.with_name(f"{input_path.stem}_deidentified{input_path.suffix}")
-
-    if not base.exists():
-        return str(base)
-
-    index = 1
-    while True:
-        candidate = input_path.with_name(
-            f"{input_path.stem}_deidentified_{index}{input_path.suffix}"
-        )
-        if not candidate.exists():
-            return str(candidate)
-        index += 1
 
 
 def target_file_type(target: DeidentifyTarget) -> str:
@@ -82,7 +96,7 @@ def filter_xlsx_targets(plan: DeidentifyPlan) -> list[DeidentifyTarget]:
 
 
 def normalize_sheet_name(name: Any) -> str:
-    return unicodedata.normalize("NFC", str(name))
+    return normalize_nfc(name)
 
 
 def find_worksheet(workbook, sheet_name: str):
@@ -121,10 +135,6 @@ def cell_type_name(cell: Cell) -> str:
     return type(cell.value).__name__
 
 
-def get_location_label(target: DeidentifyTarget, fallback: str) -> str:
-    return target.location_label or fallback
-
-
 def get_sheet_and_cell(target: DeidentifyTarget) -> tuple[str | None, str | None]:
     meta = target.location_meta or {}
     return meta.get("sheetName"), meta.get("cellRef")
@@ -135,14 +145,7 @@ def merged_cell_status(ws, cell_ref: str) -> tuple[bool, bool, str | None, str |
     병합 셀 여부를 확인합니다.
 
     Returns:
-        is_merged:
-            병합 범위에 포함되는지
-        is_top_left:
-            병합 범위의 좌상단 셀인지
-        merged_range:
-            병합 범위 문자열
-        top_left:
-            좌상단 cellRef
+        (is_merged, is_top_left, merged_range_str, top_left_ref)
     """
     row, col = coordinate_to_tuple(cell_ref)
 
@@ -160,6 +163,29 @@ def merged_cell_status(ws, cell_ref: str) -> tuple[bool, bool, str | None, str |
 
     return False, False, None, None
 
+
+def _make_skipped_item(
+    target: DeidentifyTarget,
+    warning: str,
+    target_count: int = 1,
+) -> CommonApplyItem:
+    """
+    sheetName/cellRef 누락 등 사전 검증 단계에서 skip되는 target에 대한 CommonApplyItem.
+    """
+    return CommonApplyItem(
+        locationLabel=target.location_label,
+        locationMeta=target.location_meta or {},
+        label=target.label or "",
+        action=target.action,
+        originalText=target.context or "",
+        appliedText=target.context or "",
+        status="skipped",
+        appliedTargetCount=0,
+        skippedTargetCount=target_count,
+        warnings=[warning],
+    )
+
+
 def group_targets_by_sheet_cell(
     targets: list[DeidentifyTarget],
 ) -> tuple[dict[tuple[str, str], list[DeidentifyTarget]], list[CommonApplyItem], list[str]]:
@@ -174,44 +200,23 @@ def group_targets_by_sheet_cell(
 
     for target in targets:
         sheet_name, cell_ref = get_sheet_and_cell(target)
-        label = target.label or ""
 
         if not sheet_name:
-            warning = f"{target.location_label}: sheetName이 없어 자동 적용을 건너뛰었습니다."
-            warnings.append(warning)
-            skipped_items.append(
-                CommonApplyItem(
-                    locationLabel=target.location_label,
-                    locationMeta=target.location_meta or {},
-                    label=label,
-                    action=target.action,
-                    originalText=target.context or "",
-                    appliedText=target.context or "",
-                    status="skipped",
-                    appliedTargetCount=0,
-                    skippedTargetCount=1,
-                    warnings=[warning],
-                )
+            warning = format_warning(
+                WARNING_MISSING_SHEET_NAME,
+                f"{target.location_label}: sheetName이 없어 자동 적용을 건너뛰었습니다.",
             )
+            warnings.append(warning)
+            skipped_items.append(_make_skipped_item(target, warning))
             continue
 
         if not cell_ref:
-            warning = f"{target.location_label}: cellRef가 없어 자동 적용을 건너뛰었습니다."
-            warnings.append(warning)
-            skipped_items.append(
-                CommonApplyItem(
-                    locationLabel=target.location_label,
-                    locationMeta=target.location_meta or {},
-                    label=label,
-                    action=target.action,
-                    originalText=target.context or "",
-                    appliedText=target.context or "",
-                    status="skipped",
-                    appliedTargetCount=0,
-                    skippedTargetCount=1,
-                    warnings=[warning],
-                )
+            warning = format_warning(
+                WARNING_MISSING_CELL_REF,
+                f"{target.location_label}: cellRef가 없어 자동 적용을 건너뛰었습니다.",
             )
+            warnings.append(warning)
+            skipped_items.append(_make_skipped_item(target, warning))
             continue
 
         grouped.setdefault((str(sheet_name), str(cell_ref)), []).append(target)
@@ -219,69 +224,28 @@ def group_targets_by_sheet_cell(
     return grouped, skipped_items, warnings
 
 
-def labels_for_targets(targets: list[DeidentifyTarget]) -> str:
-    labels: list[str] = []
-
-    for target in targets:
-        if target.label and target.label not in labels:
-            labels.append(target.label)
-
-    return ", ".join(labels)
-
-
-def actions_for_targets(targets: list[DeidentifyTarget]) -> str:
-    actions: list[str] = []
-
-    for target in targets:
-        if target.action and target.action not in actions:
-            actions.append(target.action)
-
-    return ", ".join(actions)
-
-
-def validate_slice_against_matched(
-    cell_value: str,
-    target: DeidentifyTarget,
-) -> str | None:
+def _make_cell_skipped_item(
+    location_label: str,
+    location_meta: dict[str, Any],
+    targets: list[DeidentifyTarget],
+    original_text: str,
+    warnings: list[str],
+) -> CommonApplyItem:
     """
-    실제 cell_value[start:end]와 matched가 직접 일치하는지 검증합니다.
-
-    NFC 정규화 후에만 일치하는 경우도 자동 적용하지 않고 warning으로 처리합니다.
+    셀 단위 사전 검증(병합셀/수식/비문자열/빈 셀)에서 skip되는 CommonApplyItem.
     """
-    if target.start is None or target.end is None:
-        return "start 또는 end가 None입니다."
-
-    if target.start < 0 or target.end > len(cell_value) or target.start >= target.end:
-        return (
-            "start/end 범위가 현재 셀 값에 유효하지 않습니다: "
-            f"start={target.start}, end={target.end}, cell_len={len(cell_value)}"
-        )
-
-    actual = cell_value[target.start:target.end]
-    matched = target.matched or ""
-
-    if actual == matched:
-        return None
-
-    if normalize_nfc(actual) == normalize_nfc(matched):
-        return (
-            "cell_value[start:end]와 matched가 원문 기준으로 일치하지 않습니다. "
-            "NFC 정규화 후에만 일치하므로 인덱스 기준 불일치 가능성이 있어 자동 적용을 건너뜁니다: "
-            f"actual={actual!r}, matched={matched!r}, start={target.start}, end={target.end}"
-        )
-
-    return (
-        "cell_value[start:end]와 matched가 일치하지 않아 자동 적용을 건너뜁니다: "
-        f"actual={actual!r}, matched={matched!r}, start={target.start}, end={target.end}"
+    return CommonApplyItem(
+        locationLabel=location_label,
+        locationMeta=location_meta,
+        label=labels_for_targets(targets),
+        action=actions_for_targets(targets),
+        originalText=original_text,
+        appliedText=original_text,
+        status="skipped",
+        appliedTargetCount=0,
+        skippedTargetCount=len(targets),
+        warnings=warnings,
     )
-
-
-def make_status(applied_count: int, skipped_count: int) -> str:
-    if applied_count > 0 and skipped_count == 0:
-        return "applied"
-    if applied_count > 0 and skipped_count > 0:
-        return "partial"
-    return "skipped"
 
 
 def apply_targets_to_cell(
@@ -307,98 +271,93 @@ def apply_targets_to_cell(
 
     cell = ws[cell_ref]
 
+    # 병합 셀: ws[cell_ref]가 MergedCell이면 좌상단이 아님
     if isinstance(cell, MergedCell):
-        warning = (
+        warning = format_warning(
+            WARNING_MERGED_CELL_NOT_TOP_LEFT,
             f"{location_label}: 병합 셀의 좌상단 셀이 아니므로 자동 적용을 건너뛰었습니다. "
-            f"cellRef={cell_ref}"
+            f"cellRef={cell_ref}",
         )
         warnings.append(warning)
-        return CommonApplyItem(
-            locationLabel=location_label,
-            locationMeta=location_meta,
-            label=labels_for_targets(targets),
-            action=actions_for_targets(targets),
-            originalText="",
-            appliedText="",
-            status="skipped",
-            appliedTargetCount=0,
-            skippedTargetCount=len(targets),
-            warnings=warnings,
+        return _make_cell_skipped_item(
+            location_label, location_meta, targets, "", warnings,
         )
 
+    # 병합 셀: 좌상단이라도 명시적으로 확인
     is_merged, is_top_left, merged_range, top_left = merged_cell_status(ws, cell_ref)
     if is_merged and not is_top_left:
-        warning = (
+        warning = format_warning(
+            WARNING_MERGED_CELL_NOT_TOP_LEFT,
             f"{location_label}: 병합 셀의 좌상단 셀이 아니므로 자동 적용을 건너뛰었습니다. "
-            f"mergedRange={merged_range}, topLeft={top_left}"
+            f"mergedRange={merged_range}, topLeft={top_left}",
         )
         warnings.append(warning)
-        return CommonApplyItem(
-            locationLabel=location_label,
-            locationMeta=location_meta,
-            label=labels_for_targets(targets),
-            action=actions_for_targets(targets),
-            originalText=str(cell.value or ""),
-            appliedText=str(cell.value or ""),
-            status="skipped",
-            appliedTargetCount=0,
-            skippedTargetCount=len(targets),
-            warnings=warnings,
+        return _make_cell_skipped_item(
+            location_label, location_meta, targets, str(cell.value or ""), warnings,
         )
 
+    # 빈 셀 처리 (None 또는 빈 문자열)
+    # openpyxl에서 빈 문자열로 저장된 셀은 다시 읽을 때 None이 될 수 있으므로
+    # 두 케이스를 함께 처리합니다.
+    if cell.value is None or cell.value == "":
+        warning = format_warning(
+            WARNING_EMPTY_CELL,
+            f"{location_label}: 빈 셀에 detection이 있어 자동 적용을 건너뛰었습니다.",
+        )
+        warnings.append(warning)
+        return _make_cell_skipped_item(
+            location_label, location_meta, targets, "", warnings,
+        )
+
+    # 수식 셀
     if is_formula_cell(cell):
-        warning = (
+        warning = format_warning(
+            WARNING_FORMULA_CELL,
             f"{location_label}: 수식 셀에 detection이 있어 자동 적용을 건너뛰었습니다. "
-            f"cellType=formula, formula={cell.value}"
+            f"cellType=formula, formula={cell.value}",
         )
         warnings.append(warning)
-        return CommonApplyItem(
-            locationLabel=location_label,
-            locationMeta=location_meta,
-            label=labels_for_targets(targets),
-            action=actions_for_targets(targets),
-            originalText=str(cell.value or ""),
-            appliedText=str(cell.value or ""),
-            status="skipped",
-            appliedTargetCount=0,
-            skippedTargetCount=len(targets),
-            warnings=warnings,
+        return _make_cell_skipped_item(
+            location_label, location_meta, targets, str(cell.value or ""), warnings,
         )
 
+    # 비문자열 셀
     if not is_string_cell(cell):
-        warning = (
+        warning = format_warning(
+            WARNING_NON_STRING_CELL,
             f"{location_label}: 비문자열 셀에 detection이 있어 자동 적용을 건너뛰었습니다. "
-            f"cellType={cell_type_name(cell)}, cellValue={cell.value}"
+            f"cellType={cell_type_name(cell)}, cellValue={cell.value}",
         )
         warnings.append(warning)
-        return CommonApplyItem(
-            locationLabel=location_label,
-            locationMeta=location_meta,
-            label=labels_for_targets(targets),
-            action=actions_for_targets(targets),
-            originalText=str(cell.value or ""),
-            appliedText=str(cell.value or ""),
-            status="skipped",
-            appliedTargetCount=0,
-            skippedTargetCount=len(targets),
-            warnings=warnings,
+        return _make_cell_skipped_item(
+            location_label, location_meta, targets, str(cell.value or ""), warnings,
         )
 
     cell_value = cell.value
 
-    if any(target.context is not None and normalize_nfc(target.context) != normalize_nfc(cell_value) for target in targets):
+    # context 불일치 warning (적용은 진행)
+    if any(
+        target.context is not None
+        and normalize_nfc(target.context) != normalize_nfc(cell_value)
+        for target in targets
+    ):
         warnings.append(
-            f"{location_label}: target.context와 실제 셀 값이 다릅니다. "
-            "cell_value 기준으로 slice 검증 후 적용 여부를 판단합니다."
+            format_warning(
+                WARNING_CONTEXT_MISMATCH,
+                f"{location_label}: target.context와 실제 셀 값이 다릅니다. "
+                "cell_value 기준으로 slice 검증 후 적용 여부를 판단합니다.",
+            )
         )
 
     valid_targets: list[DeidentifyTarget] = []
     skipped_count = 0
 
     for target in targets:
-        slice_error = validate_slice_against_matched(cell_value, target)
+        warning_type, slice_error = validate_slice_against_text(cell_value, target)
         if slice_error is not None:
-            warnings.append(f"{location_label}: {slice_error}")
+            warnings.append(
+                format_warning(warning_type, f"{location_label}: {slice_error}")
+            )
             skipped_count += 1
             continue
 
@@ -411,6 +370,7 @@ def apply_targets_to_cell(
             deletion_mode=deletion_mode,
         )
         cell.value = apply_result.applied_text
+        cell.data_type = "s"  # 13주차 보완: 문자열 셀 타입 명시 유지
         warnings.extend(apply_result.warnings)
         applied_count = len(apply_result.applied_targets)
         skipped_count += len(apply_result.skipped_targets)
@@ -458,7 +418,10 @@ def apply_plan_to_xlsx(
         ws = find_worksheet(wb, sheet_name)
 
         if ws is None:
-            warning = f"{sheet_name} 시트를 찾을 수 없어 자동 적용을 건너뛰었습니다."
+            warning = format_warning(
+                WARNING_SHEET_NOT_FOUND,
+                f"{sheet_name} 시트를 찾을 수 없어 자동 적용을 건너뛰었습니다.",
+            )
             global_warnings.append(warning)
             auto_results.append(
                 CommonApplyItem(
@@ -492,6 +455,7 @@ def apply_plan_to_xlsx(
 
     return CommonApplyResult(
         fileType="xlsx",
+        applyMode=APPLY_MODE_APPLIED,
         inputFilePath=str(input_path),
         outputFilePath=resolved_output_path,
         autoResults=auto_results,
