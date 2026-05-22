@@ -36,7 +36,8 @@ try:
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_PARAGRAPH_TARGET,
         WARNING_MISSING_PARAGRAPH_NO,
-        WARNING_PARAGRAPH_NOT_IN_BODY,
+        WARNING_UNSUPPORTED_DOCX_SECTION,
+        WARNING_MISSING_TABLE_CELL_LOCATION,
         WARNING_PARAGRAPH_OUT_OF_RANGE,
         actions_for_targets,
         format_warning,
@@ -64,7 +65,8 @@ except ModuleNotFoundError:
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_PARAGRAPH_TARGET,
         WARNING_MISSING_PARAGRAPH_NO,
-        WARNING_PARAGRAPH_NOT_IN_BODY,
+        WARNING_UNSUPPORTED_DOCX_SECTION,
+        WARNING_MISSING_TABLE_CELL_LOCATION,
         WARNING_PARAGRAPH_OUT_OF_RANGE,
         actions_for_targets,
         format_warning,
@@ -506,7 +508,6 @@ def _target_location_key(target: DeidentifyTarget) -> tuple | None:
 
     return None
 
-
 def _group_targets_by_location(
     targets: list[DeidentifyTarget],
 ) -> tuple[dict[tuple, list[DeidentifyTarget]], list[CommonApplyItem], list[str]]:
@@ -515,8 +516,16 @@ def _group_targets_by_location(
 
     body key:
         ("body", paragraphNo)
+
     table_cell key:
         ("table_cell", tableNo, rowNo, colNo, paragraphNo)
+
+    지원 section:
+        - body
+        - table_cell
+
+    미지원 section:
+        - skip + unsupported_docx_section warning
     """
     grouped: dict[tuple, list[DeidentifyTarget]] = {}
     skipped_items: list[CommonApplyItem] = []
@@ -529,43 +538,66 @@ def _group_targets_by_location(
             continue
 
         section = str(meta.get("section") or "body")
-        paragraph_no = meta.get("paragraphNo")
 
-        if paragraph_no is None:
-            item = _make_skipped_item_for_target(
-                target,
-                WARNING_MISSING_PARAGRAPH_NO,
-                f"{target.location_label}: paragraphNo가 없어 안내를 생성하지 못했습니다.",
-            )
-            warnings.extend(item.warnings)
-            skipped_items.append(item)
+        if section == "body":
+            paragraph_no = meta.get("paragraphNo")
+
+            if paragraph_no is None:
+                item = _make_skipped_item_for_target(
+                    target,
+                    WARNING_MISSING_PARAGRAPH_NO,
+                    f"{target.location_label}: paragraphNo가 없어 안내를 생성하지 못했습니다.",
+                )
+                warnings.extend(item.warnings)
+                skipped_items.append(item)
+                continue
+
+            key = ("body", int(paragraph_no))
+            grouped.setdefault(key, []).append(target)
             continue
 
-        if section not in {"body", "table_cell"}:
-            item = _make_skipped_item_for_target(
-                target,
-                WARNING_PARAGRAPH_NOT_IN_BODY,
-                f"{target.location_label}: section={section} 위치는 현재 docx guide 범위 외이므로 안내를 생성하지 않습니다.",
+        if section == "table_cell":
+            missing_fields = [
+                field_name
+                for field_name in ("tableNo", "rowNo", "colNo", "paragraphNo")
+                if meta.get(field_name) is None
+            ]
+
+            if missing_fields:
+                item = _make_skipped_item_for_target(
+                    target,
+                    WARNING_MISSING_TABLE_CELL_LOCATION,
+                    (
+                        f"{target.location_label}: 표 위치 메타데이터가 부족해 "
+                        f"안내를 생성하지 못했습니다. missing={missing_fields}"
+                    ),
+                )
+                warnings.extend(item.warnings)
+                skipped_items.append(item)
+                continue
+
+            key = (
+                "table_cell",
+                int(meta["tableNo"]),
+                int(meta["rowNo"]),
+                int(meta["colNo"]),
+                int(meta["paragraphNo"]),
             )
-            warnings.extend(item.warnings)
-            skipped_items.append(item)
+            grouped.setdefault(key, []).append(target)
             continue
 
-        key = _target_location_key(target)
-        if key is None:
-            item = _make_skipped_item_for_target(
-                target,
-                WARNING_MISSING_PARAGRAPH_NO,
-                f"{target.location_label}: 표 위치 메타데이터(tableNo/rowNo/colNo/paragraphNo)가 부족해 안내를 생성하지 못했습니다.",
-            )
-            warnings.extend(item.warnings)
-            skipped_items.append(item)
-            continue
-
-        grouped.setdefault(key, []).append(target)
+        item = _make_skipped_item_for_target(
+            target,
+            WARNING_UNSUPPORTED_DOCX_SECTION,
+            (
+                f"{target.location_label}: section={section} 위치는 "
+                "현재 docx guide 범위 외이므로 안내를 생성하지 않습니다."
+            ),
+        )
+        warnings.extend(item.warnings)
+        skipped_items.append(item)
 
     return grouped, skipped_items, warnings
-
 
 def _build_guide_item_for_paragraph(
     parsed_paragraph: ParsedParagraph | None,
