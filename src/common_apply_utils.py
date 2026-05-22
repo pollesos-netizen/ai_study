@@ -39,6 +39,11 @@ WARNING_FORMULA_CELL = "formula_cell"
 WARNING_NON_STRING_CELL = "non_string_cell"
 WARNING_EMPTY_CELL = "empty_cell"
 WARNING_SHEET_NOT_FOUND = "sheet_not_found"
+# pptx 전용
+WARNING_MISSING_SLIDE_NO = "missing_slide_no"
+WARNING_SLIDE_OUT_OF_RANGE = "slide_out_of_range"
+WARNING_SHAPE_NOT_FOUND = "shape_not_found"
+WARNING_UNKNOWN_SECTION = "unknown_section"
 
 
 def format_warning(warning_type: str, message: str) -> str:

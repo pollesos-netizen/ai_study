@@ -1,20 +1,21 @@
-﻿"""
-docx ?뚯씪 ?먯? + ?덈궡(guide) 紐⑤뱶
+"""
+docx 파일 탐지 + 안내(guide) 모드
 
-紐⑹쟻:
-- docx ?뚯씪?먯꽌 蹂몃Ц paragraph瑜??쒗쉶?섎ŉ 媛쒖씤?뺣낫/誘쇨컧?뺣낫瑜??먯??⑸땲??
-- ?쒖뒪?쒖? docx ?뚯씪??吏곸젒 ?섏젙?섏? ?딆뒿?덈떎.
-- 寃곌낵??CommonApplyResult(applyMode="guide")濡?諛섑솚?⑸땲??
-- ?ъ슜?먮뒗 ?덈궡???곕씪 ?먮낯 docx?먯꽌 吏곸젒 ?섏젙?⑸땲??
+목적:
+- docx 파일에서 본문 paragraph를 순회하며 개인정보/민감정보를 탐지합니다.
+- 시스템은 docx 파일을 직접 수정하지 않습니다.
+- 결과는 CommonApplyResult(applyMode="guide")로 반환합니다.
+- 사용자는 안내에 따라 원본 docx에서 직접 수정합니다.
 
-13二쇱감 踰붿쐞:
-- 蹂몃Ц paragraphs留?泥섎━ (???ㅻ뜑/?명꽣/媛곸＜??蹂꾨룄 二쇱감)
-- 鍮?臾몃떒(strip 湲곗?)? ?먯? ??곸뿉???쒖쇅
-- regex + NER + AI ?먯?瑜?吏?먰븯?? 13二쇱감 珥덈컲?먮뒗 regex留??곗꽑 寃利?媛??
-?듭떖 ?⑥닔:
-- detect_in_docx():            DeidentifyPlan ?앹꽦
+13주차 범위:
+- 본문 paragraphs만 처리 (표/헤더/푸터/각주는 별도 주차)
+- 빈 문단(strip 기준)은 탐지 대상에서 제외
+- regex + NER + AI 탐지를 지원하되, 13주차 초반에는 regex만 우선 검증 가능
+
+핵심 함수:
+- detect_in_docx():            DeidentifyPlan 생성
 - build_guide_for_docx():      DeidentifyPlan -> CommonApplyResult (guide)
-- detect_and_build_guide_for_docx(): ???⑥닔???몄쓽 wrapper
+- detect_and_build_guide_for_docx(): 두 함수의 편의 wrapper
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ try:
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_PARAGRAPH_TARGET,
         WARNING_MISSING_PARAGRAPH_NO,
+        WARNING_MISSING_TABLE_CELL_LOCATION,
         WARNING_UNSUPPORTED_DOCX_SECTION,
         WARNING_PARAGRAPH_OUT_OF_RANGE,
         actions_for_targets,
@@ -63,6 +65,7 @@ except ModuleNotFoundError:
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_PARAGRAPH_TARGET,
         WARNING_MISSING_PARAGRAPH_NO,
+        WARNING_MISSING_TABLE_CELL_LOCATION,
         WARNING_UNSUPPORTED_DOCX_SECTION,
         WARNING_PARAGRAPH_OUT_OF_RANGE,
         actions_for_targets,
@@ -81,19 +84,19 @@ except ModuleNotFoundError:
     )
 
 
-# ?? ?곗씠??援ъ“ ????????????????????????????????????????????????
+# ── 데이터 구조 ────────────────────────────────────────────────
 
 @dataclass
 class ParsedParagraph:
     """
-    docx??paragraph瑜??곕━ ?먯? ?⑥쐞濡?蹂?섑븳 援ъ“.
+    docx의 paragraph를 우리 탐지 단위로 변환한 구조.
 
     section:
-    - "body": doc.paragraphs 湲곗? 蹂몃Ц paragraph
-    - "table_cell": doc.tables ?대? cell.paragraphs 湲곗? paragraph
+    - "body": doc.paragraphs 기준 본문 paragraph
+    - "table_cell": doc.tables 내부 cell.paragraphs 기준 paragraph
     """
 
-    paragraph_no: int  # section蹂?paragraph ?몃뜳??(0-based)
+    paragraph_no: int  # section별 paragraph 인덱스 (0-based)
     section: str
     text: str
     table_no: int | None = None
@@ -102,15 +105,17 @@ class ParsedParagraph:
 
     @property
     def location_label(self) -> str:
-        # ?ъ슜???쒖떆留?1-based濡?蹂??+ context 30??        if self.section == "table_cell":
-            base = (
-                f"??{self.table_no + 1}踰?"
-                f"{self.row_no + 1}??{self.col_no + 1}??
-            )
+        if self.section == "table_cell":
+            table_no = 0 if self.table_no is None else self.table_no
+            row_no = 0 if self.row_no is None else self.row_no
+            col_no = 0 if self.col_no is None else self.col_no
+
+            base = f"표 {table_no + 1}번 {row_no + 1}행 {col_no + 1}열"
+
             if self.paragraph_no > 0:
-                base += f" {self.paragraph_no + 1}踰덉㎏ 臾몃떒"
+                base += f" {self.paragraph_no + 1}번째 문단"
         else:
-            base = f"蹂몃Ц {self.paragraph_no + 1}踰덉㎏ 臾몃떒"
+            base = f"본문 {self.paragraph_no + 1}번째 문단"
 
         return make_location_label_with_context(base, self.text, max_length=30)
 
@@ -132,20 +137,20 @@ class ParsedParagraph:
         return meta
 
 
-# ?? docx 濡쒕뱶 諛?paragraph ?쒗쉶 ????????????????????????????????
+# ── docx 로드 및 paragraph 순회 ────────────────────────────────
 
 def load_docx(input_path: str | Path):
     """
-    python-docx濡?docx ?뚯씪??濡쒕뱶?⑸땲??
+    python-docx로 docx 파일을 로드합니다.
 
-    ?섏〈?? python-docx (`pip install python-docx`)
+    의존성: python-docx (`pip install python-docx`)
     """
     try:
         from docx import Document
     except ImportError as exc:
         raise ImportError(
-            "python-docx媛 ?ㅼ튂?섏뼱 ?덉? ?딆뒿?덈떎. "
-            "`pip install python-docx`瑜??ㅽ뻾?섏꽭??"
+            "python-docx가 설치되어 있지 않습니다. "
+            "`pip install python-docx`를 실행하세요."
         ) from exc
 
     return Document(str(input_path))
@@ -153,11 +158,11 @@ def load_docx(input_path: str | Path):
 
 def iter_body_paragraphs(doc) -> list[ParsedParagraph]:
     """
-    臾몄꽌 蹂몃Ц(doc.paragraphs)??paragraph瑜?ParsedParagraph 紐⑸줉?쇰줈 諛섑솚?⑸땲??
+    문서 본문(doc.paragraphs)의 paragraph를 ParsedParagraph 목록으로 반환합니다.
 
-    - 鍮?臾몃떒(strip() 湲곗?)? ?쒖쇅?⑸땲??
-    - paragraphNo??鍮?臾몃떒???ы븿???먮Ц ?몃뜳?ㅻ? ?좎??⑸땲??
-    - 13二쇱감?먯꽌??蹂몃Ц留?泥섎━?섎?濡?section="body"濡?怨좎젙?⑸땲??
+    - 빈 문단(strip() 기준)은 제외합니다.
+    - paragraphNo는 빈 문단을 포함한 원문 인덱스를 유지합니다.
+    - 13주차에서는 본문만 처리하므로 section="body"로 고정합니다.
     """
     parsed: list[ParsedParagraph] = []
 
@@ -180,11 +185,12 @@ def iter_body_paragraphs(doc) -> list[ParsedParagraph]:
 
 def iter_table_cell_paragraphs(doc) -> list[ParsedParagraph]:
     """
-    臾몄꽌 ??? ?대???paragraph瑜?ParsedParagraph 紐⑸줉?쇰줈 諛섑솚?⑸땲??
+    문서 표 셀 내부의 paragraph를 ParsedParagraph 목록으로 반환합니다.
 
-    - 鍮?paragraph(strip() 湲곗?)???쒖쇅?⑸땲??
-    - paragraphNo???대떦 cell.paragraphs 湲곗? ?몃뜳?ㅻ? ?좎??⑸땲??
-    - 蹂묓빀 ?? python-docx?먯꽌 媛숈? XML cell??以묐났 李몄“?????덉쑝誘濡?      id(cell._tc) 湲곗??쇰줈 以묐났 ?먯?瑜?諛⑹??⑸땲??
+    - 빈 paragraph(strip() 기준)는 제외합니다.
+    - paragraphNo는 해당 cell.paragraphs 기준 인덱스를 유지합니다.
+    - 병합 셀은 python-docx에서 같은 XML cell이 중복 참조될 수 있으므로
+      id(cell._tc) 기준으로 중복 탐지를 방지합니다.
     """
     parsed: list[ParsedParagraph] = []
     seen_cells: set[int] = set()
@@ -218,18 +224,19 @@ def iter_table_cell_paragraphs(doc) -> list[ParsedParagraph]:
 
 def iter_docx_paragraphs(doc) -> list[ParsedParagraph]:
     """
-    13二쇱감 docx guide ?먯? ???paragraph瑜?諛섑솚?⑸땲??
+    13주차 docx guide 탐지 대상 paragraph를 반환합니다.
 
-    ???
-    - 蹂몃Ц paragraph
-    - ??? ?대? paragraph
+    대상:
+    - 본문 paragraph
+    - 표 셀 내부 paragraph
 
-    ?쒖쇅:
-    - ?ㅻ뜑/?명꽣/媛곸＜/二쇱꽍/?꾪삎/SmartArt/李⑦듃 ?대? ?띿뒪??    """
+    제외:
+    - 헤더/푸터/각주/주석/도형/SmartArt/차트 내부 텍스트
+    """
     return iter_body_paragraphs(doc) + iter_table_cell_paragraphs(doc)
 
 
-# ?? Detection ?앹꽦 (regex / NER / AI ?대뙌?? ???????????????????
+# ── Detection 생성 (regex / NER / AI 어댑터) ───────────────────
 
 def _make_target_dict_from_regex(
     raw: Any,
@@ -237,9 +244,9 @@ def _make_target_dict_from_regex(
     order: int,
 ) -> dict[str, Any] | None:
     """
-    regex_detector??寃곌낵(DetectionResult ?먮뒗 ?좎궗 dict)瑜?Detection dict濡?蹂?섑빀?덈떎.
+    regex_detector의 결과(DetectionResult 또는 유사 dict)를 Detection dict로 변환합니다.
 
-    DeidentifyPlan ?앹꽦湲곕뒗 dict ?낅젰??諛쏆쑝誘濡?dict ?뺥깭濡??뺢퇋?뷀빀?덈떎.
+    DeidentifyPlan 생성기는 dict 입력을 받으므로 dict 형태로 정규화합니다.
     """
     def _get(obj, *names, default=None):
         for name in names:
@@ -254,7 +261,7 @@ def _make_target_dict_from_regex(
     start = _get(raw, "start")
     end = _get(raw, "end")
     grade = _get(raw, "grade", default="S")
-    action = _get(raw, "action", default="留덉뒪??)
+    action = _get(raw, "action", default="마스킹")
     desc = _get(raw, "desc", "reason", default=None)
 
     if label is None or value is None or start is None or end is None:
@@ -273,7 +280,7 @@ def _make_target_dict_from_regex(
         "end": int(end),
         "sensitiveType": _get(raw, "sensitive_type", "sensitiveType", default=None),
         "sensitiveCategory": _get(raw, "sensitive_category", "sensitiveCategory", default=label),
-        "reason": str(desc) if desc else f"?뺢퇋???먯?: {label}",
+        "reason": str(desc) if desc else f"정규식 탐지: {label}",
         "_order": order,
     }
 
@@ -286,15 +293,15 @@ def _make_target_dict_from_ner(
     threshold: float,
 ) -> dict[str, Any] | None:
     """
-    Hugging Face NER 異쒕젰(aggregation_strategy="simple" 湲곗?)??Detection dict濡?蹂?섑빀?덈떎.
+    Hugging Face NER 출력(aggregation_strategy="simple" 기준)을 Detection dict로 변환합니다.
 
-    PERSON 怨꾩뿴 ?쇰꺼留?蹂?섑빀?덈떎.
-    confidence < threshold?대㈃ None??諛섑솚?⑸땲??
+    PERSON 계열 라벨만 변환합니다.
+    confidence < threshold이면 None을 반환합니다.
     """
     entity_label = (raw.get("entity_group") or raw.get("entity") or "").upper()
     entity_label = entity_label.replace("B-", "").replace("I-", "")
 
-    if entity_label not in {"PERSON", "PER", "PS", "?몃챸"}:
+    if entity_label not in {"PERSON", "PER", "PS", "인명"}:
         return None
 
     score = float(raw.get("score") or 0.0)
@@ -313,20 +320,20 @@ def _make_target_dict_from_ner(
     matched = paragraph.text[start:end] or raw.get("word") or ""
 
     return {
-        "label": "?깅챸",
+        "label": "성명",
         "matched": str(matched),
         "grade": "S",
-        "action": "留덉뒪??,
+        "action": "마스킹",
         "source": "ner",
         "context": paragraph.text,
         "locationLabel": paragraph.location_label,
         "locationMeta": paragraph.location_meta,
         "start": start,
         "end": end,
-        "sensitiveType": "媛쒖씤?뺣낫",
-        "sensitiveCategory": "?깅챸",
+        "sensitiveType": "개인정보",
+        "sensitiveCategory": "성명",
         "reason": (
-            f"NER 紐⑤뜽 PERSON ?먯? / original_label={raw.get('entity_group') or raw.get('entity')}"
+            f"NER 모델 PERSON 탐지 / original_label={raw.get('entity_group') or raw.get('entity')}"
             f" / confidence={score:.4f} / threshold={threshold:.2f}"
         ),
         "_order": order,
@@ -343,10 +350,10 @@ def _make_target_dict_from_ai(
     prob_map: dict[str, float] | None = None,
 ) -> dict[str, Any] | None:
     """
-    AI 臾몄옣遺꾨쪟 寃곌낵瑜?review target dict濡?蹂?섑빀?덈떎.
+    AI 문장분류 결과를 review target dict로 변환합니다.
 
-    AI Detection? start/end媛 ?녾퀬 matched媛 鍮?臾몄옄?댁엯?덈떎.
-    grade=='O'?닿굅??confidence < threshold?대㈃ review target??留뚮뱾吏 ?딆뒿?덈떎.
+    AI Detection은 start/end가 없고 matched가 빈 문자열입니다.
+    grade=='O'이거나 confidence < threshold이면 review target을 만들지 않습니다.
     """
     if grade == "O" or confidence < threshold:
         return None
@@ -358,27 +365,27 @@ def _make_target_dict_from_ai(
         ) + ")"
 
     return {
-        "label": "誘쇨컧?뺣낫",
+        "label": "민감정보",
         "matched": "",
         "grade": grade,
-        "action": "寃???꾩슂",
+        "action": "검토 필요",
         "source": "ai",
         "context": paragraph.text,
         "locationLabel": paragraph.location_label,
         "locationMeta": paragraph.location_meta,
         "start": None,
         "end": None,
-        "sensitiveType": "臾몃㎘ 湲곕컲 誘쇨컧?뺣낫",
+        "sensitiveType": "문맥 기반 민감정보",
         "sensitiveCategory": f"AI_{grade}",
         "reason": (
-            f"AI 臾몄옣遺꾨쪟 grade={grade} / confidence={confidence:.4f}"
+            f"AI 문장분류 grade={grade} / confidence={confidence:.4f}"
             f" / threshold={threshold:.2f}{prob_text}"
         ),
         "_order": order,
     }
 
 
-# ?? ?먯? ?뚯씠?꾨씪???????????????????????????????????????????????
+# ── 탐지 파이프라인 ─────────────────────────────────────────────
 
 def detect_in_docx(
     input_path: str,
@@ -390,22 +397,25 @@ def detect_in_docx(
     ai_threshold: float = 0.6,
 ) -> DeidentifyPlan:
     """
-    docx ?뚯씪?먯꽌 蹂몃Ц paragraph瑜??쒗쉶?섎ŉ ?먯?瑜??섑뻾?섍퀬 DeidentifyPlan???앹꽦?⑸땲??
+    docx 파일에서 본문 paragraph를 순회하며 탐지를 수행하고 DeidentifyPlan을 생성합니다.
 
     Args:
-        input_path: docx ?뚯씪 寃쎈줈
-        regex_detect_func: text -> regex detection 紐⑸줉 (?앸왂 ??regex_detector.detect_patterns ?ъ슜)
-        ner_detect_func: text -> HF NER pipeline 異쒕젰 紐⑸줉 (?앸왂 ??NER skip)
-        ai_predict_func: text -> (grade, confidence, prob_map) (?앸왂 ??AI skip)
-        ner_threshold: NER confidence ?꾧퀎媛?        ai_threshold: AI confidence ?꾧퀎媛?
+        input_path: docx 파일 경로
+        regex_detect_func: text -> regex detection 목록 (생략 시 regex_detector.detect_patterns 사용)
+        ner_detect_func: text -> HF NER pipeline 출력 목록 (생략 시 NER skip)
+        ai_predict_func: text -> (grade, confidence, prob_map) (생략 시 AI skip)
+        ner_threshold: NER confidence 임계값
+        ai_threshold: AI confidence 임계값
+
     Returns:
         DeidentifyPlan (auto_targets + review_targets)
 
-    ?먯? ?⑥닔瑜?二쇱엯?뺤쑝濡?諛쏅뒗 ?댁쑀:
-    - ?⑥쐞 ?뚯뒪?몄뿉??紐⑤뜽 ?섏〈?깆쓣 ?딆쓣 ???덈룄濡??⑸땲??
-    - 13二쇱감 珥덈컲?먮뒗 regex留??곌껐?댁꽌 guide 援ъ“遺??寃利앺븷 ???덉뒿?덈떎.
+    탐지 함수를 주입형으로 받는 이유:
+    - 단위 테스트에서 모델 의존성을 끊을 수 있도록 합니다.
+    - 13주차 초반에는 regex만 연결해서 guide 구조부터 검증할 수 있습니다.
     """
-    # regex ?먯? ?⑥닔 湲곕낯媛?    if regex_detect_func is None:
+    # regex 탐지 함수 기본값
+    if regex_detect_func is None:
         try:
             from src.regex_detector import detect_patterns as _detect_patterns
         except ModuleNotFoundError:
@@ -432,7 +442,7 @@ def detect_in_docx(
             try:
                 raw_ner = ner_detect_func(paragraph.text) or []
             except Exception as exc:
-                print(f"[NER] {paragraph.location_label} ?먯? ?ㅽ뙣: {exc}")
+                print(f"[NER] {paragraph.location_label} 탐지 실패: {exc}")
                 raw_ner = []
 
             for raw in raw_ner:
@@ -448,7 +458,7 @@ def detect_in_docx(
             try:
                 grade, confidence, prob_map = ai_predict_func(paragraph.text)
             except Exception as exc:
-                print(f"[AI] {paragraph.location_label} ?덉륫 ?ㅽ뙣: {exc}")
+                print(f"[AI] {paragraph.location_label} 예측 실패: {exc}")
                 grade, confidence, prob_map = "O", 0.0, {}
 
             if grade is not None and confidence is not None:
@@ -463,7 +473,7 @@ def detect_in_docx(
     return build_deidentify_plan(detections)
 
 
-# ?? guide ?앹꽦 ?????????????????????????????????????????????????
+# ── guide 생성 ─────────────────────────────────────────────────
 
 def _make_skipped_item_for_target(
     target: DeidentifyTarget,
@@ -511,7 +521,7 @@ def _group_targets_by_location(
     targets: list[DeidentifyTarget],
 ) -> tuple[dict[tuple, list[DeidentifyTarget]], list[CommonApplyItem], list[str]]:
     """
-    auto target??docx location key 湲곗??쇰줈 臾띠뒿?덈떎.
+    auto target을 docx location key 기준으로 묶습니다.
 
     body key:
         ("body", paragraphNo)
@@ -535,7 +545,7 @@ def _group_targets_by_location(
             item = _make_skipped_item_for_target(
                 target,
                 WARNING_MISSING_PARAGRAPH_NO,
-                f"{target.location_label}: paragraphNo媛 ?놁뼱 ?덈궡瑜??앹꽦?섏? 紐삵뻽?듬땲??",
+                f"{target.location_label}: paragraphNo가 없어 안내를 생성하지 못했습니다.",
             )
             warnings.extend(item.warnings)
             skipped_items.append(item)
@@ -545,7 +555,7 @@ def _group_targets_by_location(
             item = _make_skipped_item_for_target(
                 target,
                 WARNING_UNSUPPORTED_DOCX_SECTION,
-                f"{target.location_label}: section={section} ?꾩튂???꾩옱 docx guide 踰붿쐞 ?몄씠誘濡??덈궡瑜??앹꽦?섏? ?딆뒿?덈떎.",
+                f"{target.location_label}: section={section} 위치는 현재 docx guide 범위 외이므로 안내를 생성하지 않습니다.",
             )
             warnings.extend(item.warnings)
             skipped_items.append(item)
@@ -556,7 +566,7 @@ def _group_targets_by_location(
             item = _make_skipped_item_for_target(
                 target,
                 WARNING_MISSING_PARAGRAPH_NO,
-                f"{target.location_label}: ???꾩튂 硫뷀??곗씠??tableNo/rowNo/colNo/paragraphNo)媛 遺議깊빐 ?덈궡瑜??앹꽦?섏? 紐삵뻽?듬땲??",
+                f"{target.location_label}: 표 위치 메타데이터(tableNo/rowNo/colNo/paragraphNo)가 부족해 안내를 생성하지 못했습니다.",
             )
             warnings.extend(item.warnings)
             skipped_items.append(item)
@@ -575,7 +585,7 @@ def _build_guide_item_for_paragraph(
     deletion_mode: str,
 ) -> CommonApplyItem:
     """
-    ??paragraph???랁븳 target 紐⑸줉?????guide 紐⑤뱶 CommonApplyItem???앹꽦?⑸땲??
+    한 paragraph에 속한 target 목록에 대해 guide 모드 CommonApplyItem을 생성합니다.
     """
     representative = targets[0]
 
@@ -585,16 +595,16 @@ def _build_guide_item_for_paragraph(
         location_meta = representative.location_meta or parsed_paragraph.location_meta
     else:
         paragraph_text = None
-        location_label = representative.location_label or "?????녿뒗 docx ?꾩튂"
+        location_label = representative.location_label or "알 수 없는 docx 위치"
         location_meta = representative.location_meta or {"fileType": "docx"}
 
     warnings: list[str] = []
 
-    # paragraph_text媛 None?대㈃ paragraph 踰붿쐞 珥덇낵
+    # paragraph_text가 None이면 paragraph 범위 초과
     if paragraph_text is None:
         warning = format_warning(
             WARNING_PARAGRAPH_OUT_OF_RANGE,
-            f"{location_label}: location={location_key}媛 臾몄꽌 踰붿쐞瑜?踰쀬뼱?ъ뒿?덈떎.",
+            f"{location_label}: location={location_key}가 문서 범위를 벗어났습니다.",
         )
         warnings.append(warning)
         return CommonApplyItem(
@@ -610,11 +620,11 @@ def _build_guide_item_for_paragraph(
             warnings=warnings,
         )
 
-    # 鍮?paragraph
+    # 빈 paragraph
     if not paragraph_text.strip():
         warning = format_warning(
             WARNING_EMPTY_PARAGRAPH_TARGET,
-            f"{location_label}: 鍮?paragraph瑜?媛由ы궎??target? ?덈궡瑜??앹꽦?섏? ?딆뒿?덈떎.",
+            f"{location_label}: 빈 paragraph를 가리키는 target은 안내를 생성하지 않습니다.",
         )
         warnings.append(warning)
         return CommonApplyItem(
@@ -630,7 +640,7 @@ def _build_guide_item_for_paragraph(
             warnings=warnings,
         )
 
-    # context 遺덉씪移?(?곸슜? 吏꾪뻾)
+    # context 불일치 (적용은 진행)
     if any(
         target.context is not None
         and normalize_nfc(target.context) != normalize_nfc(paragraph_text)
@@ -639,12 +649,13 @@ def _build_guide_item_for_paragraph(
         warnings.append(
             format_warning(
                 WARNING_CONTEXT_MISMATCH,
-                f"{location_label}: target.context? ?ㅼ젣 paragraph ?띿뒪?멸? ?ㅻ쫭?덈떎. "
-                "paragraph ?띿뒪??湲곗??쇰줈 slice 寃利???沅뚯옣 ?щ?瑜??먮떒?⑸땲??",
+                f"{location_label}: target.context와 실제 paragraph 텍스트가 다릅니다. "
+                "paragraph 텍스트 기준으로 slice 검증 후 권장 여부를 판단합니다.",
             )
         )
 
-    # slice 寃利?    valid_targets: list[DeidentifyTarget] = []
+    # slice 검증
+    valid_targets: list[DeidentifyTarget] = []
     skipped_count = 0
 
     for target in targets:
@@ -658,7 +669,7 @@ def _build_guide_item_for_paragraph(
 
         valid_targets.append(target)
 
-    # guide 紐⑤뱶 preview ?앹꽦 (硫붾え由ъ뿉?쒕쭔)
+    # guide 모드 preview 생성 (메모리에서만)
     if valid_targets:
         apply_result = apply_targets_to_text(
             paragraph_text,
@@ -706,9 +717,9 @@ def build_guide_for_docx(
     deletion_mode: str = "delete",
 ) -> CommonApplyResult:
     """
-    DeidentifyPlan??諛쏆븘 guide 紐⑤뱶 CommonApplyResult瑜??앹꽦?⑸땲??
+    DeidentifyPlan을 받아 guide 모드 CommonApplyResult를 생성합니다.
 
-    ?ㅼ젣 ?뚯씪???섏젙?섏? ?딆쑝硫? outputFilePath??None?낅땲??
+    실제 파일을 수정하지 않으며, outputFilePath는 None입니다.
     """
     doc = load_docx(input_path)
     parsed_paragraphs = iter_docx_paragraphs(doc)
@@ -758,7 +769,7 @@ def detect_and_build_guide_for_docx(
     deletion_mode: str = "delete",
 ) -> CommonApplyResult:
     """
-    detect_in_docx + build_guide_for_docx ?몄쓽 wrapper.
+    detect_in_docx + build_guide_for_docx 편의 wrapper.
     """
     plan = detect_in_docx(
         input_path,
