@@ -32,12 +32,11 @@ try:
         build_summary,
         make_review_items,
     )
-    from common_apply_utils import (
+    from old.common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_PARAGRAPH_TARGET,
         WARNING_MISSING_PARAGRAPH_NO,
-        WARNING_UNSUPPORTED_DOCX_SECTION,
-        WARNING_MISSING_TABLE_CELL_LOCATION,
+        WARNING_PARAGRAPH_NOT_IN_BODY,
         WARNING_PARAGRAPH_OUT_OF_RANGE,
         actions_for_targets,
         format_warning,
@@ -61,12 +60,11 @@ except ModuleNotFoundError:
         build_summary,
         make_review_items,
     )
-    from common_apply_utils import (
+    from old.common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_PARAGRAPH_TARGET,
         WARNING_MISSING_PARAGRAPH_NO,
-        WARNING_UNSUPPORTED_DOCX_SECTION,
-        WARNING_MISSING_TABLE_CELL_LOCATION,
+        WARNING_PARAGRAPH_NOT_IN_BODY,
         WARNING_PARAGRAPH_OUT_OF_RANGE,
         actions_for_targets,
         format_warning,
@@ -89,51 +87,26 @@ except ModuleNotFoundError:
 @dataclass
 class ParsedParagraph:
     """
-    docx의 paragraph를 우리 탐지 단위로 변환한 구조.
-
-    section:
-    - "body": doc.paragraphs 기준 본문 paragraph
-    - "table_cell": doc.tables 내부 cell.paragraphs 기준 paragraph
+    docx의 본문 paragraph를 우리 탐지 단위로 변환한 구조.
     """
 
-    paragraph_no: int  # section별 paragraph 인덱스 (0-based)
-    section: str
+    paragraph_no: int  # doc.paragraphs 기준 원문 인덱스 (0-based)
+    section: str  # 13주차에서는 항상 "body"
     text: str
-    table_no: int | None = None
-    row_no: int | None = None
-    col_no: int | None = None
 
     @property
     def location_label(self) -> str:
-        # 사용자 표시만 1-based로 변환 + context 30자
-        if self.section == "table_cell":
-            base = (
-                f"표 {self.table_no + 1}번 "
-                f"{self.row_no + 1}행 {self.col_no + 1}열"
-            )
-            if self.paragraph_no > 0:
-                base += f" {self.paragraph_no + 1}번째 문단"
-        else:
-            base = f"본문 {self.paragraph_no + 1}번째 문단"
-
+        # 1-based 표시 + context 30자
+        base = f"본문 {self.paragraph_no + 1}번째 문단"
         return make_location_label_with_context(base, self.text, max_length=30)
 
     @property
     def location_meta(self) -> dict[str, Any]:
-        meta = {
+        return {
             "fileType": "docx",
             "section": self.section,
             "paragraphNo": self.paragraph_no,
         }
-
-        if self.section == "table_cell":
-            meta.update({
-                "tableNo": self.table_no,
-                "rowNo": self.row_no,
-                "colNo": self.col_no,
-            })
-
-        return meta
 
 
 # ── docx 로드 및 paragraph 순회 ────────────────────────────────
@@ -180,52 +153,6 @@ def iter_body_paragraphs(doc) -> list[ParsedParagraph]:
         )
 
     return parsed
-
-def iter_table_cell_paragraphs(doc) -> list[ParsedParagraph]:
-    """
-    문서 표 셀 내부 paragraph를 ParsedParagraph 목록으로 반환합니다.
-
-    - 빈 paragraph(strip 기준)는 제외합니다.
-    - tableNo/rowNo/colNo/paragraphNo는 0-based로 저장합니다.
-    - 병합 셀 중복 제거는 13주차에서는 수행하지 않습니다.
-      guide 모드에서는 누락 방지가 중복 제거보다 중요합니다.
-    """
-    parsed: list[ParsedParagraph] = []
-
-    for table_index, table in enumerate(doc.tables):
-        for row_index, row in enumerate(table.rows):
-            for col_index, cell in enumerate(row.cells):
-                for para_index, paragraph in enumerate(cell.paragraphs):
-                    text = paragraph.text
-
-                    if not text.strip():
-                        continue
-
-                    parsed.append(
-                        ParsedParagraph(
-                            paragraph_no=para_index,
-                            section="table_cell",
-                            text=text,
-                            table_no=table_index,
-                            row_no=row_index,
-                            col_no=col_index,
-                        )
-                    )
-
-    return parsed
-
-def iter_docx_paragraphs(doc) -> list[ParsedParagraph]:
-    """
-    13주차 docx guide 탐지 대상 paragraph를 반환합니다.
-
-    대상:
-    - 본문 paragraph
-    - 표 셀 내부 paragraph
-
-    제외:
-    - 헤더/푸터/각주/주석/도형/SmartArt/차트 내부 텍스트
-    """
-    return iter_body_paragraphs(doc) + iter_table_cell_paragraphs(doc)
 
 
 # ── Detection 생성 (regex / NER / AI 어댑터) ───────────────────
@@ -415,7 +342,7 @@ def detect_in_docx(
         regex_detect_func = _detect_patterns
 
     doc = load_docx(input_path)
-    paragraphs = iter_docx_paragraphs(doc)
+    paragraphs = iter_body_paragraphs(doc)
 
     detections: list[dict[str, Any]] = []
     order = 0
@@ -467,67 +394,16 @@ def detect_in_docx(
 
 # ── guide 생성 ─────────────────────────────────────────────────
 
-def _make_skipped_item_for_target(
-    target: DeidentifyTarget,
-    warning_type: str,
-    message: str,
-) -> CommonApplyItem:
-    warning = format_warning(warning_type, message)
-    return CommonApplyItem(
-        locationLabel=target.location_label,
-        locationMeta=target.location_meta or {},
-        label=target.label or "",
-        action=target.action,
-        originalText=target.context or "",
-        appliedText=target.context or "",
-        status="skipped",
-        appliedTargetCount=0,
-        skippedTargetCount=1,
-        warnings=[warning],
-    )
-
-
-def _target_location_key(target: DeidentifyTarget) -> tuple | None:
-    meta = target.location_meta or {}
-    section = str(meta.get("section") or "body")
-    paragraph_no = meta.get("paragraphNo")
-
-    if paragraph_no is None:
-        return None
-
-    if section == "body":
-        return ("body", int(paragraph_no))
-
-    if section == "table_cell":
-        table_no = meta.get("tableNo")
-        row_no = meta.get("rowNo")
-        col_no = meta.get("colNo")
-        if table_no is None or row_no is None or col_no is None:
-            return None
-        return ("table_cell", int(table_no), int(row_no), int(col_no), int(paragraph_no))
-
-    return None
-
-def _group_targets_by_location(
+def _group_targets_by_paragraph(
     targets: list[DeidentifyTarget],
-) -> tuple[dict[tuple, list[DeidentifyTarget]], list[CommonApplyItem], list[str]]:
+) -> tuple[dict[int, list[DeidentifyTarget]], list[CommonApplyItem], list[str]]:
     """
-    auto target을 docx location key 기준으로 묶습니다.
+    auto target을 paragraphNo 기준으로 묶습니다.
 
-    body key:
-        ("body", paragraphNo)
-
-    table_cell key:
-        ("table_cell", tableNo, rowNo, colNo, paragraphNo)
-
-    지원 section:
-        - body
-        - table_cell
-
-    미지원 section:
-        - skip + unsupported_docx_section warning
+    fileType이 docx가 아닌 target은 제외합니다.
+    paragraphNo가 없거나 section이 body가 아닌 경우 skipped item으로 처리합니다.
     """
-    grouped: dict[tuple, list[DeidentifyTarget]] = {}
+    grouped: dict[int, list[DeidentifyTarget]] = {}
     skipped_items: list[CommonApplyItem] = []
     warnings: list[str] = []
 
@@ -537,71 +413,61 @@ def _group_targets_by_location(
         if str(meta.get("fileType") or "").lower() != "docx":
             continue
 
+        paragraph_no = meta.get("paragraphNo")
         section = str(meta.get("section") or "body")
 
-        if section == "body":
-            paragraph_no = meta.get("paragraphNo")
-
-            if paragraph_no is None:
-                item = _make_skipped_item_for_target(
-                    target,
-                    WARNING_MISSING_PARAGRAPH_NO,
-                    f"{target.location_label}: paragraphNo가 없어 안내를 생성하지 못했습니다.",
-                )
-                warnings.extend(item.warnings)
-                skipped_items.append(item)
-                continue
-
-            key = ("body", int(paragraph_no))
-            grouped.setdefault(key, []).append(target)
-            continue
-
-        if section == "table_cell":
-            missing_fields = [
-                field_name
-                for field_name in ("tableNo", "rowNo", "colNo", "paragraphNo")
-                if meta.get(field_name) is None
-            ]
-
-            if missing_fields:
-                item = _make_skipped_item_for_target(
-                    target,
-                    WARNING_MISSING_TABLE_CELL_LOCATION,
-                    (
-                        f"{target.location_label}: 표 위치 메타데이터가 부족해 "
-                        f"안내를 생성하지 못했습니다. missing={missing_fields}"
-                    ),
-                )
-                warnings.extend(item.warnings)
-                skipped_items.append(item)
-                continue
-
-            key = (
-                "table_cell",
-                int(meta["tableNo"]),
-                int(meta["rowNo"]),
-                int(meta["colNo"]),
-                int(meta["paragraphNo"]),
+        if paragraph_no is None:
+            warning = format_warning(
+                WARNING_MISSING_PARAGRAPH_NO,
+                f"{target.location_label}: paragraphNo가 없어 안내를 생성하지 못했습니다.",
             )
-            grouped.setdefault(key, []).append(target)
+            warnings.append(warning)
+            skipped_items.append(
+                CommonApplyItem(
+                    locationLabel=target.location_label,
+                    locationMeta=meta,
+                    label=target.label or "",
+                    action=target.action,
+                    originalText=target.context or "",
+                    appliedText=target.context or "",
+                    status="skipped",
+                    appliedTargetCount=0,
+                    skippedTargetCount=1,
+                    warnings=[warning],
+                )
+            )
             continue
 
-        item = _make_skipped_item_for_target(
-            target,
-            WARNING_UNSUPPORTED_DOCX_SECTION,
-            (
-                f"{target.location_label}: section={section} 위치는 "
-                "현재 docx guide 범위 외이므로 안내를 생성하지 않습니다."
-            ),
-        )
-        warnings.extend(item.warnings)
-        skipped_items.append(item)
+        if section != "body":
+            warning = format_warning(
+                WARNING_PARAGRAPH_NOT_IN_BODY,
+                f"{target.location_label}: section={section} 위치는 13주차 범위 외이므로 안내를 생성하지 않습니다.",
+            )
+            warnings.append(warning)
+            skipped_items.append(
+                CommonApplyItem(
+                    locationLabel=target.location_label,
+                    locationMeta=meta,
+                    label=target.label or "",
+                    action=target.action,
+                    originalText=target.context or "",
+                    appliedText=target.context or "",
+                    status="skipped",
+                    appliedTargetCount=0,
+                    skippedTargetCount=1,
+                    warnings=[warning],
+                )
+            )
+            continue
+
+        grouped.setdefault(int(paragraph_no), []).append(target)
 
     return grouped, skipped_items, warnings
 
+
 def _build_guide_item_for_paragraph(
-    parsed_paragraph: ParsedParagraph | None,
-    location_key: tuple,
+    paragraph_no: int,
+    paragraph_text: str | None,  # None이면 paragraph_out_of_range
     targets: list[DeidentifyTarget],
     *,
     deletion_mode: str,
@@ -610,15 +476,19 @@ def _build_guide_item_for_paragraph(
     한 paragraph에 속한 target 목록에 대해 guide 모드 CommonApplyItem을 생성합니다.
     """
     representative = targets[0]
+    base_label = f"본문 {paragraph_no + 1}번째 문단"
 
-    if parsed_paragraph is not None:
-        paragraph_text = parsed_paragraph.text
-        location_label = representative.location_label or parsed_paragraph.location_label
-        location_meta = representative.location_meta or parsed_paragraph.location_meta
-    else:
-        paragraph_text = None
-        location_label = representative.location_label or "알 수 없는 docx 위치"
-        location_meta = representative.location_meta or {"fileType": "docx"}
+    # context 우선순위: 실제 paragraph_text > target.context
+    display_text = paragraph_text if paragraph_text is not None else (representative.context or "")
+    location_label = (
+        representative.location_label
+        or make_location_label_with_context(base_label, display_text, max_length=30)
+    )
+    location_meta = representative.location_meta or {
+        "fileType": "docx",
+        "section": "body",
+        "paragraphNo": paragraph_no,
+    }
 
     warnings: list[str] = []
 
@@ -626,7 +496,7 @@ def _build_guide_item_for_paragraph(
     if paragraph_text is None:
         warning = format_warning(
             WARNING_PARAGRAPH_OUT_OF_RANGE,
-            f"{location_label}: location={location_key}가 문서 범위를 벗어났습니다.",
+            f"{location_label}: paragraphNo={paragraph_no}가 문서 범위를 벗어났습니다.",
         )
         warnings.append(warning)
         return CommonApplyItem(
@@ -720,18 +590,6 @@ def _build_guide_item_for_paragraph(
     )
 
 
-def _paragraph_location_key(paragraph: ParsedParagraph) -> tuple:
-    if paragraph.section == "table_cell":
-        return (
-            "table_cell",
-            paragraph.table_no,
-            paragraph.row_no,
-            paragraph.col_no,
-            paragraph.paragraph_no,
-        )
-    return ("body", paragraph.paragraph_no)
-
-
 def build_guide_for_docx(
     input_path: str,
     plan: DeidentifyPlan,
@@ -744,22 +602,22 @@ def build_guide_for_docx(
     실제 파일을 수정하지 않으며, outputFilePath는 None입니다.
     """
     doc = load_docx(input_path)
-    parsed_paragraphs = iter_docx_paragraphs(doc)
-    paragraph_map = {
-        _paragraph_location_key(parsed): parsed
-        for parsed in parsed_paragraphs
-    }
+    body_paragraphs = list(doc.paragraphs)
+    body_count = len(body_paragraphs)
 
-    grouped, skipped_items, global_warnings = _group_targets_by_location(plan.auto_targets)
+    grouped, skipped_items, global_warnings = _group_targets_by_paragraph(plan.auto_targets)
 
     auto_results: list[CommonApplyItem] = list(skipped_items)
 
-    for location_key, targets in grouped.items():
-        parsed = paragraph_map.get(location_key)
+    for paragraph_no, targets in grouped.items():
+        if paragraph_no < 0 or paragraph_no >= body_count:
+            paragraph_text = None
+        else:
+            paragraph_text = body_paragraphs[paragraph_no].text
 
         item = _build_guide_item_for_paragraph(
-            parsed,
-            location_key,
+            paragraph_no,
+            paragraph_text,
             targets,
             deletion_mode=deletion_mode,
         )

@@ -42,7 +42,7 @@ if str(SRC_DIR) not in sys.path:
 
 from common_apply_result import APPLY_MODE_GUIDE
 from deidentify_target_builder import DeidentifyPlan, DeidentifyTarget
-from docx_detector_v2 import (
+from old.docx_detector_v2 import (
     build_guide_for_docx,
     detect_in_docx,
     iter_docx_paragraphs,

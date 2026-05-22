@@ -150,7 +150,8 @@ warning은 사람이 읽는 문자열이지만, 프론트엔드에서 아이콘/
 | `unicode_normalization_mismatch` | NFC 정규화 후에만 일치 |
 | `paragraph_out_of_range` | paragraphNo가 문서 범위를 벗어남 |
 | `missing_paragraph_no` | paragraphNo가 없음 |
-| `paragraph_not_in_body` | section이 body가 아님 (13주차 범위 외) |
+| `unsupported_docx_section` | 지원하지 않는 docx section
+| `missing_table_cell_location` | 표 셀 위치 메타데이터 누락
 | `empty_paragraph_target` | 빈 paragraph를 가리키는 target |
 | `missing_sheet_name` | sheetName이 없음 (xlsx) |
 | `missing_cell_ref` | cellRef가 없음 (xlsx) |

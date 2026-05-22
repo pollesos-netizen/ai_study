@@ -30,6 +30,7 @@ WARNING_PARAGRAPH_OUT_OF_RANGE = "paragraph_out_of_range"
 WARNING_MISSING_PARAGRAPH_NO = "missing_paragraph_no"
 WARNING_UNSUPPORTED_DOCX_SECTION = "unsupported_docx_section"
 WARNING_MISSING_TABLE_CELL_LOCATION = "missing_table_cell_location"
+
 WARNING_EMPTY_PARAGRAPH_TARGET = "empty_paragraph_target"
 WARNING_OVERLAP_TARGET = "overlap_target"
 WARNING_MISSING_SHEET_NAME = "missing_sheet_name"

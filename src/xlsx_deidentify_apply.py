@@ -32,7 +32,7 @@ try:
         build_summary,
         make_review_items,
     )
-    from src.common_apply_utils import (
+    from old.common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_CELL,
         WARNING_FORMULA_CELL,
@@ -59,7 +59,7 @@ except ModuleNotFoundError:
         build_summary,
         make_review_items,
     )
-    from common_apply_utils import (
+    from old.common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_CELL,
         WARNING_FORMULA_CELL,

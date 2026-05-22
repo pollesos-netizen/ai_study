@@ -24,7 +24,7 @@ from docx import Document
 
 from common_apply_result import APPLY_MODE_GUIDE
 from deidentify_target_builder import DeidentifyPlan, DeidentifyTarget
-from docx_detector import (
+from old.docx_detector_origin import (
     build_guide_for_docx,
     detect_and_build_guide_for_docx,
     detect_in_docx,
@@ -472,7 +472,7 @@ def tc14(tmp_dir: Path) -> None:
 
     plan = detect_in_docx(str(path), regex_detect_func=mock_regex)
     # detection은 없지만, paragraph 라벨 생성 자체를 별도 확인
-    from docx_detector import iter_body_paragraphs, load_docx
+    from old.docx_detector_origin import iter_body_paragraphs, load_docx
     paragraphs = iter_body_paragraphs(load_docx(str(path)))
     label = paragraphs[0].location_label
     _check("TC14.prefix", label.startswith("본문 1번째 문단:"), f"label={label}")
@@ -508,7 +508,7 @@ def tc16(tmp_dir: Path) -> None:
     path = tmp_dir / "tc16.docx"
     doc.save(str(path))
 
-    from docx_detector import iter_body_paragraphs, load_docx
+    from old.docx_detector_origin import iter_body_paragraphs, load_docx
     paragraphs = iter_body_paragraphs(load_docx(str(path)))
     _check("TC16.paragraph_count", len(paragraphs) == 1)
     _check("TC16.paragraphNo", paragraphs[0].paragraph_no == 2,
