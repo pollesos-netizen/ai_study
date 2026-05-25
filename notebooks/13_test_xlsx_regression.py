@@ -26,14 +26,15 @@ from common_apply_result import APPLY_MODE_APPLIED
 from deidentify_target_builder import DeidentifyPlan, DeidentifyTarget
 from xlsx_deidentify_apply import apply_plan_to_xlsx
 
+# 공통 헬퍼
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_helpers import TestRunner
 
-_results = []
+_runner = TestRunner("xlsx Apply 회귀 테스트")
 
 
 def _check(tc_id, condition, message=""):
-    _results.append((tc_id, condition, message))
-    status = "PASS" if condition else "FAIL"
-    print(f"  [{status}] {tc_id}{': ' + message if message and not condition else ''}")
+    _runner.check(tc_id, condition, message)
 
 
 def _make_target(label, matched, start, end, source, action, sheet, cell_ref, context, grade="S"):
@@ -134,16 +135,7 @@ def main():
                any("[missing_sheet_name]" in w for w in item.warnings),
                f"warnings={item.warnings}")
 
-    print("\n=== 결과 요약 ===")
-    total = len(_results)
-    passed = sum(1 for _, ok, _ in _results if ok)
-    print(f"  통과: {passed} / 전체: {total}")
-    failed = total - passed
-    if failed:
-        for tc_id, ok, msg in _results:
-            if not ok:
-                print(f"    - {tc_id}: {msg}")
-        sys.exit(1)
+    _runner.report()
 
 
 if __name__ == "__main__":

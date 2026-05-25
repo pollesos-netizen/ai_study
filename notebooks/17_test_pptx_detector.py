@@ -105,13 +105,16 @@ def _make_target(
     )
 
 
-_results: list[tuple[str, bool, str]] = []
+_runner_path = str(Path(__file__).resolve().parent)
+if _runner_path not in sys.path:
+    sys.path.insert(0, _runner_path)
+from test_helpers import TestRunner, run_test_functions
+
+_runner = TestRunner("14주차 pptx detector 단위 테스트")
 
 
 def _check(tc_id: str, condition: bool, message: str = "") -> None:
-    _results.append((tc_id, condition, message))
-    status = "PASS" if condition else "FAIL"
-    print(f"  [{status}] {tc_id}{(': ' + message) if not condition and message else ''}")
+    _runner.check(tc_id, condition, message)
 
 
 # ── TC1: 이메일이 있는 shape 1개 ──────────────────────────────
@@ -995,30 +998,14 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp_dir_str:
         tmp_dir = Path(tmp_dir_str)
         print("=== 14주차 pptx detector 단위 테스트 ===")
-        for fn in [
+        test_fns = [
             tc1, tc2, tc3, tc4, tc5, tc6, tc7, tc8, tc9,
             tc10, tc11, tc12, tc13, tc14, tc15, tc16, tc17,
             tc18, tc19, tc20, tc21, tc22, tc23,
-        ]:
-            try:
-                fn(tmp_dir)
-            except Exception as exc:
-                print(f"  [ERROR] {fn.__name__}: {exc}")
-                import traceback
-                traceback.print_exc()
-                _results.append((fn.__name__, False, str(exc)))
+        ]
+        run_test_functions(_runner, test_fns, tmp_dir)
 
-    print("\n=== 결과 요약 ===")
-    total = len(_results)
-    passed = sum(1 for _, ok, _ in _results if ok)
-    failed = total - passed
-    print(f"  통과: {passed} / 전체: {total}")
-    if failed:
-        print(f"  실패: {failed}")
-        for tc_id, ok, msg in _results:
-            if not ok:
-                print(f"    - {tc_id}: {msg}")
-        sys.exit(1)
+    _runner.report()
 
 
 if __name__ == "__main__":

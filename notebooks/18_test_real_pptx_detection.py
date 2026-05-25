@@ -41,7 +41,7 @@ if str(SRC_DIR) not in sys.path:
 
 from common_apply_result import APPLY_MODE_GUIDE
 from deidentify_target_builder import DeidentifyPlan, DeidentifyTarget
-from pptx_detector import (
+from old.pptx_detector import (
     build_guide_for_pptx,
     detect_in_pptx,
     iter_pptx_paragraphs,

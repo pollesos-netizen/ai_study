@@ -185,24 +185,20 @@ def iter_body_paragraphs(doc) -> list[ParsedParagraph]:
 
 def iter_table_cell_paragraphs(doc) -> list[ParsedParagraph]:
     """
-    문서 표 셀 내부의 paragraph를 ParsedParagraph 목록으로 반환합니다.
+    문서 표 셀 내부 paragraph를 ParsedParagraph 목록으로 반환합니다.
 
-    - 빈 paragraph(strip() 기준)는 제외합니다.
-    - paragraphNo는 해당 cell.paragraphs 기준 인덱스를 유지합니다.
-    - 병합 셀은 python-docx에서 같은 XML cell이 중복 참조될 수 있으므로
-      id(cell._tc) 기준으로 중복 탐지를 방지합니다.
+    - 빈 paragraph(strip 기준)는 제외합니다.
+    - tableNo/rowNo/colNo/paragraphNo는 0-based로 저장합니다.
+    - 병합 셀 중복 제거는 수행하지 않습니다 (13주차 정책).
+      초기 구현에서 seen_cells를 사용했으나 복잡한 표 구조에서 실제 셀
+      paragraph가 누락되는 문제가 확인되어 제거했습니다.
+      guide 모드에서는 중복 안내보다 탐지 누락 방지를 우선합니다.
     """
     parsed: list[ParsedParagraph] = []
-    seen_cells: set[int] = set()
 
     for table_index, table in enumerate(doc.tables):
         for row_index, row in enumerate(table.rows):
             for col_index, cell in enumerate(row.cells):
-                cell_key = id(cell._tc)
-                if cell_key in seen_cells:
-                    continue
-                seen_cells.add(cell_key)
-
                 for para_index, paragraph in enumerate(cell.paragraphs):
                     text = paragraph.text
                     if not text.strip():
@@ -565,7 +561,7 @@ def _group_targets_by_location(
         if key is None:
             item = _make_skipped_item_for_target(
                 target,
-                WARNING_MISSING_PARAGRAPH_NO,
+                WARNING_MISSING_TABLE_CELL_LOCATION,
                 f"{target.location_label}: 표 위치 메타데이터(tableNo/rowNo/colNo/paragraphNo)가 부족해 안내를 생성하지 못했습니다.",
             )
             warnings.extend(item.warnings)

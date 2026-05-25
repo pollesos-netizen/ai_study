@@ -24,7 +24,7 @@ from docx import Document
 
 from common_apply_result import APPLY_MODE_GUIDE
 from deidentify_target_builder import DeidentifyPlan, DeidentifyTarget
-from old.docx_detector_origin import (
+from docx_detector import (
     build_guide_for_docx,
     detect_and_build_guide_for_docx,
     detect_in_docx,
@@ -37,6 +37,49 @@ def _create_sample_docx(paragraphs: list[str], path: Path) -> Path:
     doc = Document()
     for text in paragraphs:
         doc.add_paragraph(text)
+    doc.save(str(path))
+    return path
+
+
+def _create_docx_with_table(
+    body_paragraphs: list[str],
+    table_data: list[list[str]],
+    path: Path,
+) -> Path:
+    """본문 + 표가 들어있는 docx 생성.
+
+    table_data: [[행1셀1, 행1셀2], [행2셀1, 행2셀2], ...]
+    """
+    doc = Document()
+    for text in body_paragraphs:
+        doc.add_paragraph(text)
+    if table_data:
+        rows = len(table_data)
+        cols = len(table_data[0]) if rows > 0 else 0
+        table = doc.add_table(rows=rows, cols=cols)
+        for r, row_data in enumerate(table_data):
+            for c, cell_text in enumerate(row_data):
+                table.cell(r, c).text = cell_text
+    doc.save(str(path))
+    return path
+
+
+def _create_docx_with_merged_cell(path: Path) -> Path:
+    """병합 셀이 있는 docx 생성 (1행에 가로 병합).
+
+    구조:
+      [병합된 셀 (1행 1-2열)]
+      [셀(2,1)] [셀(2,2)]
+    """
+    doc = Document()
+    table = doc.add_table(rows=2, cols=2)
+    # 1행의 두 셀을 가로 병합
+    a = table.cell(0, 0)
+    b = table.cell(0, 1)
+    a.merge(b)
+    a.text = "병합 셀 이메일: merged@example.com"
+    table.cell(1, 0).text = "셀(2,1) 일반"
+    table.cell(1, 1).text = "셀(2,2) 일반"
     doc.save(str(path))
     return path
 
@@ -55,17 +98,28 @@ def _make_target(
     file_type: str = "docx",
     grade: str = "S",
     order: int = 0,
+    table_no: int | None = None,
+    row_no: int | None = None,
+    col_no: int | None = None,
 ) -> DeidentifyTarget:
+    location_meta: dict = {
+        "fileType": file_type,
+        "section": section,
+        "paragraphNo": paragraph_no,
+    }
+    if table_no is not None:
+        location_meta["tableNo"] = table_no
+    if row_no is not None:
+        location_meta["rowNo"] = row_no
+    if col_no is not None:
+        location_meta["colNo"] = col_no
+
     return DeidentifyTarget(
         label=label,
         matched=matched,
         action=action,
         location_label=None,  # locationLabel 자동 생성 확인용
-        location_meta={
-            "fileType": file_type,
-            "section": section,
-            "paragraphNo": paragraph_no,
-        },
+        location_meta=location_meta,
         start=start,
         end=end,
         source=source,
@@ -78,13 +132,14 @@ def _make_target(
 
 # ── 테스트 헬퍼 ─────────────────────────────────────────────────
 
-_results: list[tuple[str, bool, str]] = []
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_helpers import TestRunner, run_test_functions
+
+_runner = TestRunner("13주차 docx detector 단위 테스트")
 
 
 def _check(tc_id: str, condition: bool, message: str = "") -> None:
-    _results.append((tc_id, condition, message))
-    status = "PASS" if condition else "FAIL"
-    print(f"  [{status}] {tc_id}{': ' + message if message and not condition else ''}")
+    _runner.check(tc_id, condition, message)
 
 
 # ── TC1: 이메일 paragraph 1개 ──────────────────────────────────
@@ -472,7 +527,7 @@ def tc14(tmp_dir: Path) -> None:
 
     plan = detect_in_docx(str(path), regex_detect_func=mock_regex)
     # detection은 없지만, paragraph 라벨 생성 자체를 별도 확인
-    from old.docx_detector_origin import iter_body_paragraphs, load_docx
+    from docx_detector import iter_body_paragraphs, load_docx
     paragraphs = iter_body_paragraphs(load_docx(str(path)))
     label = paragraphs[0].location_label
     _check("TC14.prefix", label.startswith("본문 1번째 문단:"), f"label={label}")
@@ -508,7 +563,7 @@ def tc16(tmp_dir: Path) -> None:
     path = tmp_dir / "tc16.docx"
     doc.save(str(path))
 
-    from old.docx_detector_origin import iter_body_paragraphs, load_docx
+    from docx_detector import iter_body_paragraphs, load_docx
     paragraphs = iter_body_paragraphs(load_docx(str(path)))
     _check("TC16.paragraph_count", len(paragraphs) == 1)
     _check("TC16.paragraphNo", paragraphs[0].paragraph_no == 2,
@@ -535,7 +590,7 @@ def tc17(tmp_dir: Path) -> None:
     item = result.autoResults[0]
     _check("TC17.status", item.status == "skipped")
     _check("TC17.warning_type",
-           any("[paragraph_not_in_body]" in w for w in item.warnings))
+           any("[missing_table_cell_location]" in w for w in item.warnings))
 
 
 # ── TC18: target 위치 겹침 ──────────────────────────────────────
@@ -582,6 +637,198 @@ def tc18(tmp_dir: Path) -> None:
     _check("TC18.applied_count", item.appliedTargetCount == 1)
 
 
+# ── TC19: docx 표 셀 단일 탐지 ────────────────────────────────
+
+def tc19(tmp_dir: Path) -> None:
+    print("\nTC19: 표 셀 안의 이메일 탐지 + guide")
+
+    body = ["본문 paragraph"]
+    table_data = [
+        ["담당자", "이메일: test@example.com"],
+        ["연락처", "010-1234-5678"],
+    ]
+    path = _create_docx_with_table(body, table_data, tmp_dir / "tc19.docx")
+
+    matched = "test@example.com"
+    cell_text = "이메일: test@example.com"
+    s = cell_text.index(matched); e = s + len(matched)
+
+    target = _make_target(
+        label="이메일 주소", matched=matched, start=s, end=e,
+        source="regex", action="마스킹",
+        paragraph_no=0, section="table_cell",
+        table_no=0, row_no=0, col_no=1,
+        context=cell_text,
+    )
+
+    plan = DeidentifyPlan(auto_targets=[target], review_targets=[])
+    result = build_guide_for_docx(str(path), plan)
+
+    _check("TC19.autoResults_count", len(result.autoResults) == 1)
+    item = result.autoResults[0]
+    _check("TC19.status", item.status == "applied")
+    _check("TC19.applied_count", item.appliedTargetCount == 1)
+    _check("TC19.preview_masked", "*" * len(matched) in item.appliedText)
+    _check("TC19.meta_section",
+           item.locationMeta.get("section") == "table_cell")
+    _check("TC19.meta_table_no",
+           item.locationMeta.get("tableNo") == 0)
+    _check("TC19.meta_row_col",
+           item.locationMeta.get("rowNo") == 0
+           and item.locationMeta.get("colNo") == 1)
+
+
+# ── TC20: 본문 + 표 동시 탐지 ─────────────────────────────────
+
+def tc20(tmp_dir: Path) -> None:
+    print("\nTC20: 본문 + 표 셀 동시 탐지")
+
+    body = ["본문: 홍길동 직원 정보"]
+    table_data = [
+        ["사번", "이메일: foo@example.com"],
+    ]
+    path = _create_docx_with_table(body, table_data, tmp_dir / "tc20.docx")
+
+    # 본문 target (paragraph 0)
+    body_text = body[0]
+    name_idx = body_text.index("홍길동")
+    body_target = _make_target(
+        label="성명", matched="홍길동", start=name_idx, end=name_idx + 3,
+        source="ner", action="마스킹",
+        paragraph_no=0, section="body",
+        context=body_text, order=0,
+    )
+
+    # 표 target
+    cell_text = "이메일: foo@example.com"
+    email_idx = cell_text.index("foo@example.com")
+    table_target = _make_target(
+        label="이메일", matched="foo@example.com",
+        start=email_idx, end=email_idx + 15,
+        source="regex", action="마스킹",
+        paragraph_no=0, section="table_cell",
+        table_no=0, row_no=0, col_no=1,
+        context=cell_text, order=1,
+    )
+
+    plan = DeidentifyPlan(
+        auto_targets=[body_target, table_target],
+        review_targets=[],
+    )
+    result = build_guide_for_docx(str(path), plan)
+
+    _check("TC20.two_items", len(result.autoResults) == 2)
+    sections = sorted(
+        item.locationMeta.get("section") for item in result.autoResults
+    )
+    _check("TC20.sections_mixed", sections == ["body", "table_cell"])
+
+    # 둘 다 applied
+    statuses = {item.status for item in result.autoResults}
+    _check("TC20.all_applied", statuses == {"applied"})
+
+
+# ── TC21: 다중 표/다중 셀 탐지 ────────────────────────────────
+
+def tc21(tmp_dir: Path) -> None:
+    print("\nTC21: 표 2개, 각 표의 여러 셀에서 탐지")
+
+    body: list[str] = []
+
+    doc_path = tmp_dir / "tc21.docx"
+    doc = Document()
+    # 표 1: 2x2
+    t1 = doc.add_table(rows=2, cols=2)
+    t1.cell(0, 0).text = "이름"
+    t1.cell(0, 1).text = "홍길동"
+    t1.cell(1, 0).text = "사번"
+    t1.cell(1, 1).text = "12345"
+    # 표 2: 1x2
+    t2 = doc.add_table(rows=1, cols=2)
+    t2.cell(0, 0).text = "이메일"
+    t2.cell(0, 1).text = "test@example.com"
+    doc.save(str(doc_path))
+
+    # 3건 탐지: 표1(0,1), 표1(1,1), 표2(0,1)
+    targets = [
+        _make_target(
+            label="성명", matched="홍길동", start=0, end=3,
+            source="ner", action="마스킹",
+            paragraph_no=0, section="table_cell",
+            table_no=0, row_no=0, col_no=1,
+            context="홍길동", order=0,
+        ),
+        _make_target(
+            label="사번", matched="12345", start=0, end=5,
+            source="regex", action="마스킹",
+            paragraph_no=0, section="table_cell",
+            table_no=0, row_no=1, col_no=1,
+            context="12345", order=1,
+        ),
+        _make_target(
+            label="이메일", matched="test@example.com", start=0, end=16,
+            source="regex", action="마스킹",
+            paragraph_no=0, section="table_cell",
+            table_no=1, row_no=0, col_no=1,
+            context="test@example.com", order=2,
+        ),
+    ]
+
+    plan = DeidentifyPlan(auto_targets=targets, review_targets=[])
+    result = build_guide_for_docx(str(doc_path), plan)
+
+    _check("TC21.three_items", len(result.autoResults) == 3)
+
+    table_nos = sorted({
+        item.locationMeta.get("tableNo") for item in result.autoResults
+    })
+    _check("TC21.two_tables", table_nos == [0, 1])
+
+    statuses = {item.status for item in result.autoResults}
+    _check("TC21.all_applied", statuses == {"applied"})
+
+
+# ── TC22: 병합 셀이 있어도 일반 셀 누락 없음 ──────────────────
+
+def tc22(tmp_dir: Path) -> None:
+    print("\nTC22: 병합 셀이 있어도 일반 셀이 누락되지 않음 (13주차 정책)")
+
+    # 1행 가로 병합, 2행은 일반 두 셀
+    # 13주차 정책: seen_cells 제거. 중복 안내보다 탐지 누락 방지 우선.
+    path = _create_docx_with_merged_cell(tmp_dir / "tc22.docx")
+
+    def mock_regex(text):
+        import re
+        results = []
+        # 일반 셀에서만 탐지될 패턴: "셀(N,M)"
+        for m in re.finditer(r'셀\(\d,\d\)', text):
+            results.append({
+                "label": "셀_식별자", "value": m.group(),
+                "start": m.start(), "end": m.end(),
+                "grade": "S", "action": "마스킹", "desc": "셀",
+            })
+        return results
+
+    plan = detect_in_docx(str(path), regex_detect_func=mock_regex)
+
+    # 2행의 일반 셀 두 개에서 모두 탐지되어야 함
+    cell_targets = [t for t in plan.auto_targets if t.label == "셀_식별자"]
+    cell_texts = sorted({t.matched for t in cell_targets})
+
+    _check("TC22.both_normal_cells_detected",
+           cell_texts == ["셀(2,1)", "셀(2,2)"],
+           f"탐지된 셀 텍스트: {cell_texts}")
+
+    # 두 일반 셀이 각각 (1,0)과 (1,1)에 위치
+    row1_cols = sorted({
+        t.location_meta.get("colNo") for t in cell_targets
+        if t.location_meta.get("rowNo") == 1
+    })
+    _check("TC22.row_1_both_cols",
+           row1_cols == [0, 1],
+           f"row=1 col={row1_cols}")
+
+
 # ── 실행 ──────────────────────────────────────────────────────
 
 def main() -> None:
@@ -589,29 +836,14 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp_dir_str:
         tmp_dir = Path(tmp_dir_str)
         print("=== 13주차 docx detector 단위 테스트 ===")
-        for fn in [
+        test_fns = [
             tc1, tc2, tc3, tc4, tc5, tc6, tc7, tc8, tc9,
             tc10, tc11, tc12, tc13, tc14, tc15, tc16, tc17, tc18,
-        ]:
-            try:
-                fn(tmp_dir)
-            except Exception as exc:
-                print(f"  [ERROR] {fn.__name__}: {exc}")
-                import traceback
-                traceback.print_exc()
-                _results.append((fn.__name__, False, str(exc)))
+            tc19, tc20, tc21, tc22,
+        ]
+        run_test_functions(_runner, test_fns, tmp_dir)
 
-    print("\n=== 결과 요약 ===")
-    total = len(_results)
-    passed = sum(1 for _, ok, _ in _results if ok)
-    failed = total - passed
-    print(f"  통과: {passed} / 전체: {total}")
-    if failed:
-        print(f"  실패: {failed}")
-        for tc_id, ok, msg in _results:
-            if not ok:
-                print(f"    - {tc_id}: {msg}")
-        sys.exit(1)
+    _runner.report()
 
 
 if __name__ == "__main__":

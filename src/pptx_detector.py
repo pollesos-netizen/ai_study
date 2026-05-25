@@ -772,12 +772,14 @@ def _group_targets_by_location(
         from src.common_apply_result import CommonApplyItem
         from src.common_apply_utils import (
             WARNING_MISSING_PARAGRAPH_NO,
+            WARNING_MISSING_SHAPE_LOCATION,
             format_warning,
         )
     except ModuleNotFoundError:
         from common_apply_result import CommonApplyItem
         from common_apply_utils import (
             WARNING_MISSING_PARAGRAPH_NO,
+            WARNING_MISSING_SHAPE_LOCATION,
             format_warning,
         )
 
@@ -817,10 +819,11 @@ def _group_targets_by_location(
                     f"{label}: paragraphNo가 없어 안내를 생성하지 못했습니다.",
                 )
             else:
-                # shape_text/table_cell의 보조 필드 누락
+                # shape_text/table_cell/notes/group_* section의 보조 필드 누락
+                # (shapeNo, rowNo, colNo, runIndex 등 section마다 다름)
                 warning = format_warning(
-                    WARNING_MISSING_PARAGRAPH_NO,
-                    f"{label}: 위치 필드(shapeNo/rowNo/colNo)가 누락되어 안내를 생성하지 못했습니다.",
+                    WARNING_MISSING_SHAPE_LOCATION,
+                    f"{label}: 위치 필드(shapeNo/rowNo/colNo 등)가 누락되어 안내를 생성하지 못했습니다.",
                 )
 
             warnings.append(warning)

@@ -28,8 +28,6 @@ WARNING_SLICE_MISMATCH = "slice_mismatch"
 WARNING_UNICODE_NORMALIZATION_MISMATCH = "unicode_normalization_mismatch"
 WARNING_PARAGRAPH_OUT_OF_RANGE = "paragraph_out_of_range"
 WARNING_MISSING_PARAGRAPH_NO = "missing_paragraph_no"
-WARNING_UNSUPPORTED_DOCX_SECTION = "unsupported_docx_section"
-WARNING_MISSING_TABLE_CELL_LOCATION = "missing_table_cell_location"
 WARNING_EMPTY_PARAGRAPH_TARGET = "empty_paragraph_target"
 WARNING_OVERLAP_TARGET = "overlap_target"
 WARNING_MISSING_SHEET_NAME = "missing_sheet_name"
@@ -39,11 +37,24 @@ WARNING_FORMULA_CELL = "formula_cell"
 WARNING_NON_STRING_CELL = "non_string_cell"
 WARNING_EMPTY_CELL = "empty_cell"
 WARNING_SHEET_NOT_FOUND = "sheet_not_found"
+# docx 전용
+WARNING_UNSUPPORTED_DOCX_SECTION = "unsupported_docx_section"
+WARNING_MISSING_TABLE_CELL_LOCATION = "missing_table_cell_location"
 # pptx 전용
 WARNING_MISSING_SLIDE_NO = "missing_slide_no"
 WARNING_SLIDE_OUT_OF_RANGE = "slide_out_of_range"
 WARNING_SHAPE_NOT_FOUND = "shape_not_found"
 WARNING_UNKNOWN_SECTION = "unknown_section"
+WARNING_MISSING_SHAPE_LOCATION = "missing_shape_location"
+# hwpx 전용
+WARNING_MISSING_SECTION_NO = "missing_section_no"
+WARNING_SECTION_OUT_OF_RANGE = "section_out_of_range"
+# pdf 전용
+WARNING_MISSING_PAGE_NO = "missing_page_no"
+WARNING_PDF_PAGE_OUT_OF_RANGE = "pdf_page_out_of_range"
+WARNING_PDF_TEXT_BLOCK_NOT_FOUND = "pdf_text_block_not_found"
+WARNING_SCANNED_PDF_NO_TEXT = "scanned_pdf_no_text"
+WARNING_PDF_ENCRYPTED = "pdf_encrypted"
 
 
 def format_warning(warning_type: str, message: str) -> str:
