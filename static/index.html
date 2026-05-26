@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>비식별화 도구</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --border: #dde2ea;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #eff6ff;
+    --danger: #dc2626;
+    --warning: #d97706;
+    --success: #16a34a;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --grade-c: #fee2e2;
+    --grade-c-text: #991b1b;
+    --grade-s: #fef9c3;
+    --grade-s-text: #92400e;
+    --grade-o: #dcfce7;
+    --grade-o-text: #166534;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── 헤더 ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+
+  header .logo {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.3px;
+  }
+
+  header .subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+  }
+
+  header .version {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── 메인 레이아웃 ── */
+  main {
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── 카드 ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-header h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .card-body { padding: 20px; }
+
+  /* ── 업로드 영역 ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg);
+    position: relative;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  .upload-zone .upload-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .upload-zone .upload-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .file-selected {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--primary-light);
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--primary-dark);
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .file-selected.show { display: flex; }
+
+  /* ── 옵션 ── */
+  .options-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .option-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .option-group select,
+  .option-group input[type="checkbox"] {
+    cursor: pointer;
+  }
+
+  select {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+
+  select:focus { border-color: var(--primary); }
+
+  .toggle-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 6px;
+  }
+
+  .toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  /* ── 버튼 ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+  }
+
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { background: var(--bg); }
+
+  .btn-download {
+    background: var(--success);
+    color: white;
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .btn-download:hover { background: #15803d; }
+
+  .submit-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+
+  /* ── 로딩 ── */
+  #loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px;
+  }
+
+  #loading.show { display: flex; }
+
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 에러 ── */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .alert-error {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: var(--danger);
+  }
+
+  .alert-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: var(--primary-dark);
+  }
+
+  /* ── 요약 ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .summary-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .summary-item .value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .summary-item .label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ── 등급 배지 ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-C { background: var(--grade-c); color: var(--grade-c-text); }
+  .badge-S { background: var(--grade-s); color: var(--grade-s-text); }
+  .badge-O { background: var(--grade-o); color: var(--grade-o-text); }
+  .badge-null { background: #f1f5f9; color: var(--text-muted); }
+  .badge-source { background: #f1f5f9; color: var(--text-muted); font-weight: 500; }
+
+  /* ── 결과 테이블 ── */
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .result-table th {
+    background: var(--bg);
+    padding: 9px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .result-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .result-table tr:last-child td { border-bottom: none; }
+  .result-table tr:hover td { background: var(--bg); }
+
+  .text-original {
+    color: var(--danger);
+    /* text-decoration: line-through; */
+    font-size: 12px;
+  }
+
+  .text-applied {
+    color: var(--success);
+    font-weight: 500;
+  }
+
+  .location-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── PDF 안내 ── */
+  .pdf-notice {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #92400e;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  /* ── review targets ── */
+  .review-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+
+  .review-item:last-child { margin-bottom: 0; }
+
+  .review-context {
+    background: var(--bg);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 8px 0;
+    line-height: 1.7;
+    border-left: 3px solid var(--border);
+  }
+
+  .review-grades {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .grade-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+    background: var(--surface);
+  }
+
+  .grade-option:hover { border-color: var(--primary); background: var(--primary-light); }
+
+  .grade-option input[type="radio"] { display: none; }
+
+  .grade-option.selected-C { border-color: #f87171; background: var(--grade-c); }
+  .grade-option.selected-S { border-color: #fbbf24; background: var(--grade-s); }
+  .grade-option.selected-O { border-color: #4ade80; background: var(--grade-o); }
+  .grade-option.selected-X { border-color: #94a3b8; background: #f1f5f9; }
+
+  .grade-ai-hint {
+    font-size: 10px;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  /* ── 탭 ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+  }
+
+  .tab {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+
+  .tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+  }
+
+  .tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background: var(--primary);
+    color: white;
+    border-radius: 9px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 5px;
+    margin-left: 5px;
+  }
+
+  .tab-panel { display: none; padding: 20px; }
+  .tab-panel.active { display: block; }
+
+  /* ── hidden ── */
+  .hidden { display: none !important; }
+
+  /* ── 반응형 ── */
+  @media (max-width: 600px) {
+    main { padding: 0 12px; margin: 16px auto; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🔐 비식별화 도구</div>
+  <div class="subtitle">AI혁신TF단 빅데이터팀</div>
+  <div class="version" id="version-badge">v0.1.0</div>
+</header>
+
+<main>
+  <!-- 업로드 카드 -->
+  <div class="card" id="upload-card">
+    <div class="card-header">
+      <h2>📁 파일 업로드</h2>
+    </div>
+    <div class="card-body">
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input"
+               accept=".xlsx,.docx,.pptx,.hwpx,.pdf">
+        <div class="upload-icon">📄</div>
+        <div class="upload-title">파일을 드래그하거나 클릭해서 선택</div>
+        <div class="upload-hint">지원 형식: xlsx, docx, pptx, hwpx, pdf</div>
+      </div>
+      <div class="file-selected" id="file-selected">
+        <span>📎</span>
+        <span id="file-name-display"></span>
+        <span id="file-size-display" style="color:var(--text-muted);font-size:11px;"></span>
+      </div>
+
+      <div class="options-row">
+        <div class="option-group">
+          <label>삭제 표시 방식</label>
+          <select id="deletion-mode">
+            <option value="mark" selected>(삭제됨) 표시</option>
+            <option value="delete">빈 문자열로 삭제</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>탐지 모델</label>
+          <div class="toggle-group">
+            <label class="toggle-item">
+              <input type="checkbox" id="use-ner"> NER (성명)
+            </label>
+            <label class="toggle-item">
+              <input type="checkbox" id="use-ai"> AI (민감 후보)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="submit-row">
+        <button class="btn btn-primary" id="submit-btn" disabled>
+          🔍 비식별화 시작
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 -->
+  <div class="card hidden" id="loading-card">
+    <div id="loading" class="show">
+      <div class="spinner"></div>
+      <div style="font-size:13px;color:var(--text-muted);">분석 중입니다...</div>
+    </div>
+  </div>
+
+  <!-- 에러 -->
+  <div id="error-area" class="hidden"></div>
+
+  <!-- 결과 카드 -->
+  <div class="card hidden" id="result-card">
+    <div class="card-header" style="justify-content:space-between;">
+      <h2>📊 분석 결과</h2>
+      <button class="btn btn-secondary" id="reset-btn">↩ 다시 분석</button>
+    </div>
+
+    <!-- 요약 -->
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="value" id="sum-total">0</div>
+          <div class="label">탐지 위치</div>
+        </div>
+        <div class="summary-item">
+          <div class="value" id="sum-applied">0</div>
+          <div class="label">처리 완료</div>
+        </div>
+        <div class="summary-item">
+          <div class="value" id="sum-auto">0</div>
+          <div class="label">자동 탐지</div>
+        </div>
+        <div class="summary-item">
+          <div class="value" id="sum-review">0</div>
+          <div class="label">검토 필요</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PDF 안내 -->
+    <div id="pdf-notice" class="hidden" style="padding: 12px 20px; border-bottom: 1px solid var(--border);">
+      <div class="pdf-notice">
+        ⚠️ PDF는 직접 편집이 어려울 수 있습니다.
+        가능하면 원본 docx/hwpx 문서에서 수정 후 PDF로 다시 저장하세요.
+      </div>
+    </div>
+
+    <!-- xlsx 다운로드 -->
+    <div id="download-area" class="hidden" style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+      <button class="btn btn-download" id="download-btn">
+        ⬇ 비식별화 파일 다운로드
+      </button>
+    </div>
+
+    <!-- 탭 -->
+    <div class="tabs">
+      <div class="tab active" data-tab="auto">
+        자동 처리 <span class="tab-badge" id="tab-auto-count">0</span>
+      </div>
+      <div class="tab" data-tab="review">
+        AI 검토 <span class="tab-badge" id="tab-review-count">0</span>
+      </div>
+    </div>
+
+    <!-- 자동 처리 탭 -->
+    <div class="tab-panel active" id="tab-auto">
+      <div id="auto-empty" class="alert alert-info hidden">
+        자동 처리된 항목이 없습니다.
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="result-table" id="auto-table">
+          <thead>
+            <tr>
+              <th>등급</th>
+              <th>소스</th>
+              <th>항목</th>
+              <th>위치</th>
+              <th>원문</th>
+              <th>결과</th>
+            </tr>
+          </thead>
+          <tbody id="auto-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AI 검토 탭 -->
+    <div class="tab-panel" id="tab-review">
+      <div id="review-empty" class="alert alert-info hidden">
+        AI 추천 검토 항목이 없습니다.
+      </div>
+      <div id="review-list"></div>
+      <div id="review-submit-row" class="hidden" style="margin-top:16px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" id="feedback-btn">판단 저장</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API_BASE = '';  // 같은 서버, 상대경로 사용
+
+// ── 상태 ─────────────────────────────────────────────────────
+let currentResult = null;
+let currentFile = null;
+
+// ── 초기화 ────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  fetchVersion();
+  setupFileInput();
+  setupDragDrop();
+  setupTabs();
+  setupSubmit();
+  setupReset();
+});
+
+// ── 버전 표시 ─────────────────────────────────────────────────
+async function fetchVersion() {
+  try {
+    const res = await fetch(`${API_BASE}/api/version`);
+    const data = await res.json();
+    document.getElementById('version-badge').textContent = `v${data.api_version}`;
+  } catch {}
+}
+
+// ── 파일 선택 ─────────────────────────────────────────────────
+function setupFileInput() {
+  const input = document.getElementById('file-input');
+  input.addEventListener('change', () => {
+    if (input.files[0]) onFileSelected(input.files[0]);
+  });
+}
+
+function setupDragDrop() {
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) onFileSelected(file);
+  });
+}
+
+function onFileSelected(file) {
+  currentFile = file;
+  document.getElementById('file-name-display').textContent = file.name;
+  document.getElementById('file-size-display').textContent =
+    `(${(file.size / 1024).toFixed(1)} KB)`;
+  document.getElementById('file-selected').classList.add('show');
+  document.getElementById('submit-btn').disabled = false;
+  // 아이콘 업데이트
+  const ext = file.name.split('.').pop().toLowerCase();
+  const icons = { xlsx: '📊', docx: '📝', pptx: '📑', hwpx: '📄', pdf: '📕' };
+  document.querySelector('.upload-icon').textContent = icons[ext] || '📄';
+}
+
+// ── 탭 ────────────────────────────────────────────────────────
+function setupTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+    });
+  });
+}
+
+// ── 제출 ─────────────────────────────────────────────────────
+function setupSubmit() {
+  document.getElementById('submit-btn').addEventListener('click', runDetect);
+}
+
+async function runDetect() {
+  if (!currentFile) return;
+
+  showLoading(true);
+  clearError();
+  hideResult();
+
+  const form = new FormData();
+  form.append('file', currentFile);
+  form.append('deletionMode', document.getElementById('deletion-mode').value);
+  form.append('useNer', document.getElementById('use-ner').checked ? 'true' : 'false');
+  form.append('useAi', document.getElementById('use-ai').checked ? 'true' : 'false');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/detect`, {
+      method: 'POST',
+      body: form,
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      showError(data.message || '처리 중 오류가 발생했습니다.');
+      return;
+    }
+
+    currentResult = data;
+    renderResult(data);
+  } catch (err) {
+    showError(`서버 연결 오류: ${err.message}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ── 결과 렌더링 ────────────────────────────────────────────────
+function renderResult(data) {
+  // 요약
+  const s = data.summary;
+  document.getElementById('sum-total').textContent = s.totalLocations;
+  document.getElementById('sum-applied').textContent = s.appliedLocations;
+  document.getElementById('sum-auto').textContent = s.autoTargetCount;
+  document.getElementById('sum-review').textContent = s.reviewTargetCount;
+
+  // PDF 안내
+  document.getElementById('pdf-notice').classList.toggle('hidden', data.fileType !== 'pdf');
+
+  // xlsx 다운로드
+  const dlArea = document.getElementById('download-area');
+  if (data.applyMode === 'applied' && data.downloadToken) {
+    dlArea.classList.remove('hidden');
+    document.getElementById('download-btn').onclick = () => downloadFile(data.downloadToken);
+  } else {
+    dlArea.classList.add('hidden');
+  }
+
+  // 탭 카운트
+  document.getElementById('tab-auto-count').textContent = data.autoResults.length;
+  document.getElementById('tab-review-count').textContent = data.reviewTargets.length;
+
+  // 자동 처리 테이블
+  renderAutoResults(data.autoResults);
+
+  // AI 검토 항목
+  renderReviewTargets(data.reviewTargets);
+
+  // 결과 보이기
+  document.getElementById('result-card').classList.remove('hidden');
+
+  // review 항목 있으면 탭 전환
+  if (data.reviewTargets.length > 0 && data.autoResults.length === 0) {
+    document.querySelector('[data-tab="review"]').click();
+  }
+}
+
+function gradeBadge(grade) {
+  const labels = { C: 'C급', S: 'S급', O: 'O급' };
+  const cls = grade ? `badge-${grade}` : 'badge-null';
+  return `<span class="badge ${cls}">${labels[grade] || '-'}</span>`;
+}
+
+function sourceBadge(source) {
+  if (!source) return '-';
+  return `<span class="badge badge-source">${source}</span>`;
+}
+
+function renderAutoResults(items) {
+  const tbody = document.getElementById('auto-tbody');
+  const empty = document.getElementById('auto-empty');
+
+  tbody.innerHTML = '';
+
+  if (items.length === 0) {
+    empty.classList.remove('hidden');
+    document.getElementById('auto-table').classList.add('hidden');
+    return;
+  }
+
+  empty.classList.add('hidden');
+  document.getElementById('auto-table').classList.remove('hidden');
+
+  items.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${gradeBadge(item.grade)}</td>
+      <td>${sourceBadge(item.source)}</td>
+      <td><strong>${esc(item.label)}</strong><br>
+          <span style="font-size:11px;color:var(--text-muted);">${esc(item.action)}</span></td>
+      <td><div class="location-label" title="${esc(item.locationLabel || '')}">${esc(item.locationLabel || '-')}</div></td>
+      <td><span class="text-original">${esc(item.originalText || '')}</span></td>
+      <td><span class="text-applied">${esc(item.appliedText || '')}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderReviewTargets(items) {
+  const list = document.getElementById('review-list');
+  const empty = document.getElementById('review-empty');
+  const submitRow = document.getElementById('review-submit-row');
+
+  list.innerHTML = '';
+
+  if (items.length === 0) {
+    empty.classList.remove('hidden');
+    submitRow.classList.add('hidden');
+    return;
+  }
+
+  empty.classList.add('hidden');
+  submitRow.classList.remove('hidden');
+
+  const gradeOptions = [
+    { value: 'C', label: 'C급 (기밀)', tip: '외부 AI 사용 불가. 시스템/보안/법적 기밀 정보' },
+    { value: 'S', label: 'S급 (민감)', tip: '비식별화 후 사용. 개인정보·입찰·계약·인사 정보' },
+    { value: 'O', label: 'O급 (공개)', tip: '그대로 사용 가능. C/S 외 정보 또는 비식별화 완료' },
+    { value: 'X', label: '오탐', tip: '민감 정보가 없는 잘못된 탐지' },
+  ];
+
+  items.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'review-item';
+    div.dataset.idx = idx;
+
+    const aiGrade = item.grade;
+    const category = item.sensitiveCategory || '';
+
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        ${gradeBadge(aiGrade)}
+        <span class="badge badge-source">AI 추정</span>
+        ${category ? `<span class="badge badge-source">${esc(category)}</span>` : ''}
+        <span style="font-size:12px;color:var(--text-muted);">${esc(item.locationLabel || '')}</span>
+      </div>
+      <div class="review-context">"${esc(item.context || '')}"</div>
+      <div class="review-grades">
+        ${gradeOptions.map(opt => `
+          <label class="grade-option ${aiGrade === opt.value ? 'selected-' + opt.value : ''}"
+                 title="${opt.tip}" data-idx="${idx}" data-grade="${opt.value}">
+            <input type="radio" name="grade_${idx}" value="${opt.value}"
+                   ${aiGrade === opt.value ? 'checked' : ''}>
+            ${opt.label}
+            ${aiGrade === opt.value ? '<span class="grade-ai-hint">AI</span>' : ''}
+          </label>
+        `).join('')}
+      </div>
+    `;
+
+    // 선택 이벤트
+    div.querySelectorAll('.grade-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const idx2 = opt.dataset.idx;
+        const grade = opt.dataset.grade;
+        div.querySelectorAll('.grade-option').forEach(o => {
+          o.className = 'grade-option';
+        });
+        opt.classList.add(`selected-${grade}`);
+      });
+    });
+
+    list.appendChild(div);
+  });
+
+  // 피드백 저장 버튼
+  document.getElementById('feedback-btn').onclick = submitFeedback;
+}
+
+// ── 피드백 저장 ───────────────────────────────────────────────
+async function submitFeedback() {
+  const items = currentResult?.reviewTargets || [];
+  const promises = [];
+
+  document.querySelectorAll('#review-list .review-item').forEach((div, idx) => {
+    const selected = div.querySelector('.grade-option.selected-C, .grade-option.selected-S, .grade-option.selected-O, .grade-option.selected-X');
+    if (!selected) return;
+    const item = items[idx];
+
+    promises.push(fetch(`${API_BASE}/api/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        locationLabel: item.locationLabel || '',
+        context: item.context || '',
+        aiGrade: item.grade,
+        userGrade: selected.dataset.grade,
+        fileType: currentResult.fileType,
+        sensitiveCategory: item.sensitiveCategory,
+        reason: item.reason,
+      }),
+    }));
+  });
+
+  try {
+    await Promise.all(promises);
+    document.getElementById('feedback-btn').textContent = '✅ 저장 완료';
+    document.getElementById('feedback-btn').disabled = true;
+  } catch {
+    alert('저장 중 오류가 발생했습니다.');
+  }
+}
+
+// ── 다운로드 ─────────────────────────────────────────────────
+async function downloadFile(token) {
+  const res = await fetch(`${API_BASE}/api/download/${token}`);
+  if (!res.ok) {
+    alert('다운로드 실패: 토큰이 만료되었거나 이미 다운로드했습니다.');
+    return;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'deidentified.xlsx';
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('download-btn').textContent = '✅ 다운로드 완료';
+  document.getElementById('download-btn').disabled = true;
+}
+
+// ── 리셋 ─────────────────────────────────────────────────────
+function setupReset() {
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    currentFile = null;
+    currentResult = null;
+    document.getElementById('file-input').value = '';
+    document.getElementById('file-selected').classList.remove('show');
+    document.querySelector('.upload-icon').textContent = '📄';
+    document.getElementById('submit-btn').disabled = true;
+    hideResult();
+    clearError();
+  });
+}
+
+// ── 유틸 ─────────────────────────────────────────────────────
+function showLoading(show) {
+  document.getElementById('loading-card').classList.toggle('hidden', !show);
+  document.getElementById('submit-btn').disabled = show;
+}
+
+function hideResult() {
+  document.getElementById('result-card').classList.add('hidden');
+}
+
+function showError(msg) {
+  const area = document.getElementById('error-area');
+  area.innerHTML = `<div class="alert alert-error">⚠️ ${esc(msg)}</div>`;
+  area.classList.remove('hidden');
+}
+
+function clearError() {
+  const area = document.getElementById('error-area');
+  area.innerHTML = '';
+  area.classList.add('hidden');
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>

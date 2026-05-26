@@ -1,0 +1,171 @@
+2026-05-26 15:43:56 [INFO] uvicorn.error: Started server process [5908]
+2026-05-26 15:43:56 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-26 15:43:56 [INFO] uvicorn.error: Application startup complete.
+2026-05-26 15:43:56 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-26 15:44:04 [INFO] uvicorn.access: 127.0.0.1:58231 - "GET / HTTP/1.1" 200
+2026-05-26 15:44:20 [INFO] uvicorn.access: 127.0.0.1:58231 - "GET /api/version HTTP/1.1" 200
+2026-05-26 15:45:03 [INFO] uvicorn.access: 127.0.0.1:52134 - "POST /api/detect HTTP/1.1" 400
+2026-05-26 15:45:36 [INFO] uvicorn.access: 127.0.0.1:58358 - "POST /api/detect HTTP/1.1" 400
+2026-05-26 15:45:39 [INFO] uvicorn.access: 127.0.0.1:58358 - "POST /api/detect HTTP/1.1" 400
+2026-05-26 15:45:39 [INFO] uvicorn.access: 127.0.0.1:58358 - "POST /api/detect HTTP/1.1" 400
+2026-05-26 15:45:42 [INFO] uvicorn.access: 127.0.0.1:58358 - "GET / HTTP/1.1" 200
+2026-05-26 15:45:42 [INFO] uvicorn.access: 127.0.0.1:58358 - "GET /api/version HTTP/1.1" 200
+2026-05-26 15:45:55 [INFO] uvicorn.access: 127.0.0.1:58640 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 15:46:25 [INFO] uvicorn.error: Shutting down
+2026-05-26 15:46:25 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-26 15:46:25 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-26 15:46:25 [INFO] uvicorn.error: Finished server process [5908]
+2026-05-26 15:49:34 [INFO] uvicorn.error: Started server process [3656]
+2026-05-26 15:49:34 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-26 15:49:34 [INFO] uvicorn.error: Application startup complete.
+2026-05-26 15:49:34 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-26 15:49:38 [INFO] uvicorn.access: 127.0.0.1:63850 - "GET / HTTP/1.1" 200
+2026-05-26 15:49:55 [INFO] uvicorn.access: 127.0.0.1:63850 - "GET /api/version HTTP/1.1" 200
+2026-05-26 15:50:01 [WARNING] tensorflow: TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+2026-05-26 15:50:07 [INFO] uvicorn.access: 127.0.0.1:62116 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 15:50:38 [INFO] uvicorn.access: 127.0.0.1:49436 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 15:50:56 [INFO] uvicorn.error: Shutting down
+2026-05-26 15:50:56 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-26 15:50:56 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-26 15:50:56 [INFO] uvicorn.error: Finished server process [3656]
+2026-05-26 15:57:17 [INFO] uvicorn.error: Started server process [17116]
+2026-05-26 15:57:17 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-26 15:57:17 [INFO] uvicorn.error: Application startup complete.
+2026-05-26 15:57:17 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-26 15:57:22 [INFO] uvicorn.access: 127.0.0.1:52697 - "GET / HTTP/1.1" 200
+2026-05-26 15:57:38 [INFO] uvicorn.access: 127.0.0.1:52697 - "GET /api/version HTTP/1.1" 200
+2026-05-26 15:57:38 [WARNING] tensorflow: TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+2026-05-26 15:57:45 [INFO] uvicorn.access: 127.0.0.1:55139 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 15:58:01 [INFO] uvicorn.error: Shutting down
+2026-05-26 15:58:01 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-26 15:58:01 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-26 15:58:01 [INFO] uvicorn.error: Finished server process [17116]
+2026-05-26 15:58:11 [INFO] uvicorn.error: Started server process [8244]
+2026-05-26 15:58:11 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-26 15:58:11 [INFO] uvicorn.error: Application startup complete.
+2026-05-26 15:58:11 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-26 15:58:13 [INFO] uvicorn.access: 127.0.0.1:63464 - "GET / HTTP/1.1" 200
+2026-05-26 15:58:29 [INFO] uvicorn.access: 127.0.0.1:63464 - "GET /api/version HTTP/1.1" 200
+2026-05-26 15:58:29 [WARNING] tensorflow: TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+2026-05-26 15:58:35 [INFO] uvicorn.access: 127.0.0.1:56339 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 15:59:05 [INFO] uvicorn.access: 127.0.0.1:58041 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 15:59:27 [INFO] uvicorn.error: Shutting down
+2026-05-26 15:59:27 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-26 15:59:27 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-26 15:59:27 [INFO] uvicorn.error: Finished server process [8244]
+2026-05-26 16:06:54 [INFO] uvicorn.error: Started server process [21964]
+2026-05-26 16:06:54 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-26 16:06:54 [INFO] uvicorn.error: Application startup complete.
+2026-05-26 16:06:54 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-26 16:06:59 [INFO] uvicorn.access: 127.0.0.1:59505 - "GET / HTTP/1.1" 200
+2026-05-26 16:07:15 [INFO] uvicorn.access: 127.0.0.1:59505 - "GET /api/version HTTP/1.1" 200
+2026-05-26 16:07:15 [WARNING] tensorflow: TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+2026-05-26 16:07:21 [INFO] uvicorn.access: 127.0.0.1:62042 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:50335 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:53453 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:58480 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:55555 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:61015 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:09:04 [INFO] uvicorn.access: 127.0.0.1:57206 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:15:38 [INFO] uvicorn.error: Shutting down
+2026-05-26 16:15:38 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-26 16:15:38 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-26 16:15:38 [INFO] uvicorn.error: Finished server process [21964]
+2026-05-26 16:16:30 [INFO] uvicorn.error: Started server process [17756]
+2026-05-26 16:16:30 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-26 16:16:30 [INFO] uvicorn.error: Application startup complete.
+2026-05-26 16:16:30 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-26 16:16:37 [INFO] uvicorn.error: Shutting down
+2026-05-26 16:16:37 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-26 16:16:37 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-26 16:16:37 [INFO] uvicorn.error: Finished server process [17756]
+2026-05-26 16:16:54 [INFO] uvicorn.error: Started server process [18336]
+2026-05-26 16:16:54 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-26 16:16:54 [INFO] uvicorn.error: Application startup complete.
+2026-05-26 16:16:54 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-26 16:16:57 [INFO] uvicorn.access: 127.0.0.1:57560 - "GET / HTTP/1.1" 200
+2026-05-26 16:17:13 [INFO] uvicorn.access: 127.0.0.1:57560 - "GET /api/version HTTP/1.1" 200
+2026-05-26 16:17:18 [WARNING] tensorflow: TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+2026-05-26 16:17:24 [INFO] uvicorn.access: 127.0.0.1:57560 - "POST /api/detect HTTP/1.1" 200
+2026-05-26 16:17:31 [INFO] uvicorn.access: 127.0.0.1:55827 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:17:31 [INFO] uvicorn.access: 127.0.0.1:50609 - "POST /api/feedback HTTP/1.1" 200
+2026-05-26 16:26:48 [INFO] uvicorn.error: Shutting down
+2026-05-26 16:26:48 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-26 16:26:48 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-26 16:26:48 [INFO] uvicorn.error: Finished server process [18336]

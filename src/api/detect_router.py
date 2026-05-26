@@ -130,6 +130,35 @@ def _get_ai_model_path() -> str:
     ).strip()
 
 
+def _get_ner_threshold() -> float:
+    """NER 탐지 신뢰도 임계값.
+
+    환경 변수 NER_THRESHOLD로 조절. 기본 0.8.
+    값이 낮을수록 더 많이 탐지 (오탐 증가).
+    값이 높을수록 더 적게 탐지 (누락 증가).
+    """
+    try:
+        return float(os.environ.get("NER_THRESHOLD", "0.8"))
+    except ValueError:
+        return 0.8
+
+
+def _get_ai_threshold() -> float:
+    """AI 분류 신뢰도 임계값.
+
+    환경 변수 AI_THRESHOLD로 조절. 기본 0.5.
+    값이 낮을수록 더 많이 review_targets에 포함.
+    값이 높을수록 더 적게 포함.
+
+    참고: 모델 예측값이 0.4~0.6 사이에 분포하는 경우가 많으므로
+    기본값을 0.6에서 0.5로 낮춤 (기존 detect_router 0.6보다 낮게 설정).
+    """
+    try:
+        return float(os.environ.get("AI_THRESHOLD", "0.5"))
+    except ValueError:
+        return 0.5
+
+
 def get_model_status() -> dict[str, str]:
     """현재 모델 가용 상태 반환. /api/version에서 사용."""
     status = {"regex": "available"}
@@ -190,7 +219,8 @@ def _load_ai_func():
         model = tf.keras.models.load_model(ai_path)
 
         def predict(text: str):
-            preds = model.predict([text], verbose=0)[0].tolist()
+            import tensorflow as tf
+            preds = model.predict(tf.constant([text]), verbose=0)[0].tolist()
             labels = ["C", "S", "O"]
             prob_map = dict(zip(labels, preds))
             best = max(range(len(preds)), key=lambda i: preds[i])
@@ -274,7 +304,7 @@ def _run_xlsx(
                         ).upper().replace("B-", "").replace("I-", "")
                         if entity not in {"PERSON", "PER", "PS", "인명"}:
                             continue
-                        if float(raw.get("score", 0)) < 0.8:
+                        if float(raw.get("score", 0)) < _get_ner_threshold():
                             continue
                         s, e = int(raw.get("start", 0)), int(raw.get("end", 0))
                         detections.append({
@@ -293,6 +323,41 @@ def _run_xlsx(
                             "_order": order,
                         })
                         order += 1
+
+                if ai_func:
+                    import logging as _log
+                    try:
+                        grade, confidence, prob_map = ai_func(text)
+                        ai_threshold = _get_ai_threshold()
+                        if grade != "O" and confidence >= ai_threshold:
+                            prob_text = " / ".join(
+                                f"{k}={v:.4f}" for k, v in prob_map.items()
+                            )
+                            detections.append({
+                                "label": "민감정보",
+                                "matched": "",
+                                "grade": grade,
+                                "action": "검토 필요",
+                                "source": "ai",
+                                "context": text,
+                                "locationLabel": f"{sheet_name} {cell.coordinate}",
+                                "locationMeta": meta,
+                                "start": None, "end": None,
+                                "sensitiveType": "문맥 기반 민감정보",
+                                "sensitiveCategory": f"AI_{grade}",
+                                "reason": (
+                                    f"AI 문장분류 grade={grade} / "
+                                    f"confidence={confidence:.4f} / "
+                                    f"threshold={ai_threshold:.2f} / {prob_text}"
+                                ),
+                                "_order": order,
+                            })
+                            order += 1
+                    except Exception as exc:
+                        _log.getLogger(__name__).warning(
+                            "[AI] %s %s 예측 실패: %s",
+                            sheet_name, cell.coordinate, exc,
+                        )
 
     wb.close()
 
@@ -335,6 +400,8 @@ def _run_guide(
         ner_detect_func=ner_func,
         ai_predict_func=ai_func,
         deletion_mode=deletion_mode,
+        ner_threshold=_get_ner_threshold(),
+        ai_threshold=_get_ai_threshold(),
     )
 
     if file_type == "docx":

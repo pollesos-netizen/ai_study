@@ -1,0 +1,28 @@
+[
+  {
+    "locationLabel": "1번 본문 1번째 문단 표 1번 2행 6열: 2026.05.22.(금)",
+    "context": "2026.05.22.(금)",
+    "aiGrade": "S",
+    "userGrade": "X",
+    "fileType": "hwpx",
+    "sensitiveCategory": "AI_S",
+    "reason": "AI 문장분류 grade=S / confidence=0.4519 / threshold=0.45 / probs=(C=0.144, S=0.452, O=0.404)",
+    "userId": null,
+    "timestamp": 1779779851.4014134,
+    "isAgreement": false,
+    "isFalsePositive": true
+  },
+  {
+    "locationLabel": "1번 본문 17번째 문단 표 1번 6행 3열: 수송인원: 189,242 (앞 문단: ❍ 항목별 상세 생산 가이드(BAD/...)",
+    "context": "수송인원: 189,242",
+    "aiGrade": "S",
+    "userGrade": "X",
+    "fileType": "hwpx",
+    "sensitiveCategory": "AI_S",
+    "reason": "AI 문장분류 grade=S / confidence=0.4502 / threshold=0.45 / probs=(C=0.146, S=0.450, O=0.403)",
+    "userId": null,
+    "timestamp": 1779779851.4054134,
+    "isAgreement": false,
+    "isFalsePositive": true
+  }
+]

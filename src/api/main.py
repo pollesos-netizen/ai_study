@@ -1,23 +1,74 @@
-"""비식별화 도구 HTTP API 메인 앱.
-
-17주차 6단계: 기본 구조 + 헬스 체크/버전 엔드포인트만 구현.
-이후 단계에서 5종 detector 엔드포인트, 다운로드, 피드백을 추가합니다.
-"""
+"""비식별화 도구 HTTP API 메인 앱."""
 
 from __future__ import annotations
 
+import logging
+import logging.handlers
 import platform
 import sys
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # src 디렉토리를 sys.path에 추가 (detector import용)
 SRC_DIR = Path(__file__).resolve().parent.parent
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+
+# ── 로깅 설정 ──────────────────────────────────────────────────
+import os as _os
+
+# 환경변수 LOG_DIR로 로그 경로 지정 가능. 미설정 시 프로젝트 루트/logs
+_log_dir_env = _os.environ.get("LOG_DIR", "").strip()
+LOG_DIR = Path(_log_dir_env) if _log_dir_env else SRC_DIR.parent / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "app.log"
+
+print(f"[logging] 로그 파일: {LOG_FILE}", file=sys.stderr)
+
+_file_handler = logging.handlers.RotatingFileHandler(
+    str(LOG_FILE),
+    maxBytes=5 * 1024 * 1024,  # 5MB
+    backupCount=3,
+    encoding="utf-8",
+)
+_file_handler.setFormatter(logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+))
+
+# 루트 로거 설정
+_root = logging.getLogger()
+_root.setLevel(logging.INFO)
+_root.addHandler(_file_handler)
+
+# 터미널에는 WARNING 이상만 표시 (AI 예측 실패 등은 파일에만)
+_console = logging.StreamHandler(sys.stderr)
+_console.setLevel(logging.WARNING)
+_console.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+_root.addHandler(_console)
+
+# uvicorn 로거는 파일에도 기록
+logging.getLogger("uvicorn").addHandler(_file_handler)
+logging.getLogger("uvicorn.access").addHandler(_file_handler)
+
+# .env 파일 자동 로드 (python-dotenv 설치 시)
+# 프로젝트 루트의 .env 파일에서 NER_MODEL_PATH, AI_MODEL_PATH 등을 읽어온다
+try:
+    from dotenv import load_dotenv
+    _env_path = SRC_DIR.parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+        print(f"[startup] .env 로드: {_env_path}", file=sys.stderr)
+    else:
+        load_dotenv()  # 현재 디렉토리 .env 시도
+except ImportError:
+    pass  # python-dotenv 미설치 시 환경변수 직접 설정 필요
 
 from api.detect_router import router as detect_router
 from api.feedback_router import router as feedback_router
@@ -73,11 +124,33 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# CORS 설정 (사내망 배포용 — 브라우저 직접 접근 허용)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # 사내망이므로 전체 허용, 운영 시 도메인 지정
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # detect 라우터 등록
 app.include_router(detect_router)
 
 # feedback 라우터 등록 (no-op, 부서 협의 후 활성화)
 app.include_router(feedback_router)
+
+# static 파일 서빙 (HTML/JS/CSS)
+STATIC_DIR = SRC_DIR.parent / "static"
+STATIC_DIR.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def serve_index():
+    """메인 HTML 페이지 서빙."""
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return {"message": "index.html이 없습니다. static/index.html을 배치하세요."}
 
 
 @app.on_event("startup")
@@ -125,8 +198,10 @@ async def get_version() -> VersionResponse:
             detectors_status[module_name] = f"import_error: {exc}"
 
     # 환경 변수 기반 모델 상태 확인
-    from api.detect_router import get_model_status
+    from api.detect_router import get_model_status, _get_ner_threshold, _get_ai_threshold
     models_status = get_model_status()
+    models_status["ner_threshold"] = _get_ner_threshold()
+    models_status["ai_threshold"] = _get_ai_threshold()
 
     return VersionResponse(
         api_version=API_VERSION,

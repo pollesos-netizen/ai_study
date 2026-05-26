@@ -539,7 +539,7 @@ def detect_in_hwpx(
     ner_detect_func: Callable[[str], list[dict[str, Any]]] | None = None,
     ai_predict_func: Callable[[str], tuple[str, float, dict[str, float]]] | None = None,
     ner_threshold: float = 0.8,
-    ai_threshold: float = 0.6,
+    ai_threshold: float = 0.4,
 ) -> DeidentifyPlan:
     """
     hwpx 파일의 모든 paragraph(본문 + 표 셀)를 순회하며 탐지를 수행하고 DeidentifyPlan을 생성합니다.
@@ -589,7 +589,10 @@ def detect_in_hwpx(
             try:
                 grade, confidence, prob_map = ai_predict_func(paragraph.text)
             except Exception as exc:
-                print(f"[AI] {paragraph.location_label} 예측 실패: {exc}")
+                import logging as _log
+                _log.getLogger(__name__).warning(
+                    "[AI] %s 예측 실패: %s", paragraph.location_label, exc
+                )
                 grade, confidence, prob_map = "O", 0.0, {}
 
             if grade is not None and confidence is not None:

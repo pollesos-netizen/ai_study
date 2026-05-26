@@ -478,7 +478,10 @@ def detect_in_pdf(
             try:
                 grade, confidence, prob_map = ai_predict_func(line.text)
             except Exception as exc:
-                print(f"[AI] {line.location_label} 예측 실패: {exc}")
+                import logging as _log
+                _log.getLogger(__name__).warning(
+                    "[AI] %s 예측 실패: %s", line.location_label, exc
+                )
                 grade, confidence, prob_map = "O", 0.0, {}
 
             if grade is not None and confidence is not None:
