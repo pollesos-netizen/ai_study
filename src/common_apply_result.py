@@ -46,6 +46,9 @@ class CommonApplyItem:
     appliedTargetCount: int
     skippedTargetCount: int
     warnings: list[str] = field(default_factory=list)
+    # 등급/탐지 소스 (PHP 팀 UI 구성용 — 등급별 배지, 필터링, 집계에 활용)
+    grade: str | None = None    # "C" | "S" | "O" | None
+    source: str | None = None   # "regex" | "ner" | "ai" | "mixed" | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -59,6 +62,8 @@ class CommonApplyItem:
             "appliedTargetCount": self.appliedTargetCount,
             "skippedTargetCount": self.skippedTargetCount,
             "warnings": self.warnings,
+            "grade": self.grade,
+            "source": self.source,
         }
 
 
@@ -70,6 +75,12 @@ class CommonReviewItem:
     action: str
     context: str
     reason: str | None = None
+    # AI 탐지 결과의 구조적 필드 (reason 문자열 파싱 없이 직접 사용 가능)
+    # PHP 팀이 C/S/O 선택 UI를 만들 때 활용, 피드백 학습 시 grade 활용
+    grade: str | None = None              # "C" | "S" | "O" | None
+    sensitiveType: str | None = None      # 민감정보 유형 (예: "개인정보", "문맥 기반 민감정보")
+    sensitiveCategory: str | None = None  # 카테고리 (예: "성명", "AI_S")
+    source: str | None = None             # "regex" | "ner" | "ai"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -79,6 +90,10 @@ class CommonReviewItem:
             "action": self.action,
             "context": self.context,
             "reason": self.reason,
+            "grade": self.grade,
+            "sensitiveType": self.sensitiveType,
+            "sensitiveCategory": self.sensitiveCategory,
+            "source": self.source,
         }
 
 
@@ -154,10 +169,48 @@ def make_review_items(review_targets: list[Any]) -> list[CommonReviewItem]:
                 action=getattr(target, "action", "") or "",
                 context=getattr(target, "context", "") or "",
                 reason=getattr(target, "reason", None),
+                grade=getattr(target, "grade", None),
+                sensitiveType=getattr(target, "sensitive_type", None),
+                sensitiveCategory=getattr(target, "sensitive_category", None),
+                source=getattr(target, "source", None),
             )
         )
 
     return items
+
+
+def grade_for_targets(targets: list[Any]) -> str | None:
+    """targets 목록에서 대표 등급을 결정한다.
+
+    C > S > O 우선순위로 가장 높은 등급을 반환한다.
+    등급이 없으면 None.
+    """
+    priority = {"C": 0, "S": 1, "O": 2}
+    grades = [
+        getattr(t, "grade", None)
+        for t in targets
+        if getattr(t, "grade", None) in priority
+    ]
+    if not grades:
+        return None
+    return min(grades, key=lambda g: priority[g])
+
+
+def source_for_targets(targets: list[Any]) -> str | None:
+    """targets 목록에서 대표 탐지 소스를 결정한다.
+
+    단일 소스면 그 소스를, 여러 소스면 'mixed'를 반환한다.
+    """
+    sources = {
+        getattr(t, "source", None)
+        for t in targets
+        if getattr(t, "source", None)
+    }
+    if not sources:
+        return None
+    if len(sources) == 1:
+        return next(iter(sources))
+    return "mixed"
 
 
 def build_summary(

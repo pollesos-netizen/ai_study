@@ -30,7 +30,9 @@ try:
         CommonApplyItem,
         CommonApplyResult,
         build_summary,
+        grade_for_targets,
         make_review_items,
+        source_for_targets,
     )
     from src.common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
@@ -59,7 +61,9 @@ except ModuleNotFoundError:
         CommonApplyItem,
         CommonApplyResult,
         build_summary,
+        grade_for_targets,
         make_review_items,
+        source_for_targets,
     )
     from common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
@@ -691,6 +695,8 @@ def _build_guide_item_for_paragraph(
         appliedTargetCount=applied_count,
         skippedTargetCount=skipped_count,
         warnings=warnings,
+        grade=grade_for_targets(targets),
+        source=source_for_targets(targets),
     )
 
 

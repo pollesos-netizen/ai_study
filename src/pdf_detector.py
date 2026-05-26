@@ -659,7 +659,11 @@ def _build_guide_item_for_location(
     docx_detector / pptx_detector / hwpx_detector의 동일 함수와 같은 패턴.
     """
     try:
-        from src.common_apply_result import CommonApplyItem
+        from src.common_apply_result import (
+            CommonApplyItem,
+            grade_for_targets,
+            source_for_targets,
+        )
         from src.common_apply_utils import (
             WARNING_CONTEXT_MISMATCH,
             WARNING_EMPTY_PARAGRAPH_TARGET,
@@ -672,7 +676,11 @@ def _build_guide_item_for_location(
         )
         from src.deidentify_apply import apply_targets_to_text
     except ModuleNotFoundError:
-        from common_apply_result import CommonApplyItem
+        from common_apply_result import (
+            CommonApplyItem,
+            grade_for_targets,
+            source_for_targets,
+        )
         from common_apply_utils import (
             WARNING_CONTEXT_MISMATCH,
             WARNING_EMPTY_PARAGRAPH_TARGET,
@@ -786,6 +794,8 @@ def _build_guide_item_for_location(
         appliedTargetCount=applied_count,
         skippedTargetCount=skipped_count,
         warnings=warnings,
+        grade=grade_for_targets(targets),
+        source=source_for_targets(targets),
     )
 
 

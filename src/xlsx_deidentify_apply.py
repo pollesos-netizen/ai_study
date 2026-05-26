@@ -30,9 +30,11 @@ try:
         CommonApplyItem,
         CommonApplyResult,
         build_summary,
+        grade_for_targets,
         make_review_items,
+        source_for_targets,
     )
-    from old.common_apply_utils import (
+    from src.common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_CELL,
         WARNING_FORMULA_CELL,
@@ -57,9 +59,11 @@ except ModuleNotFoundError:
         CommonApplyItem,
         CommonApplyResult,
         build_summary,
+        grade_for_targets,
         make_review_items,
+        source_for_targets,
     )
-    from old.common_apply_utils import (
+    from common_apply_utils import (
         WARNING_CONTEXT_MISMATCH,
         WARNING_EMPTY_CELL,
         WARNING_FORMULA_CELL,
@@ -390,6 +394,8 @@ def apply_targets_to_cell(
         appliedTargetCount=applied_count,
         skippedTargetCount=skipped_count,
         warnings=warnings,
+        grade=grade_for_targets(targets),
+        source=source_for_targets(targets),
     )
 
 
