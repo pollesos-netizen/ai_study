@@ -46,7 +46,7 @@ GRADE_REPORT_PATH = REPORT_DIR / "week8_tensorflow_grade_report.csv"
 RANDOM_SEED = 42
 
 MAX_TOKENS = 3000
-SEQUENCE_LENGTH = 120
+SEQUENCE_LENGTH = 40 # char 120 -> word 40
 EMBEDDING_DIM = 64
 DENSE_UNITS = 64
 DROPOUT_RATE = 0.3
@@ -166,7 +166,7 @@ def build_model() -> keras.Model:
         max_tokens=MAX_TOKENS,
         output_mode="int",
         output_sequence_length=SEQUENCE_LENGTH,
-        split="character",
+        split="whitespace",#character -> whitespace
         name="char_vectorizer",
     )
 

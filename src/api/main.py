@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -74,6 +76,17 @@ from api.detect_router import router as detect_router
 from api.feedback_router import router as feedback_router
 
 
+# ── lifespan ──────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """서버 시작/종료 시 리소스 관리."""
+    from api.detect_router import load_models_on_startup, startup_cleanup
+    startup_cleanup()
+    load_models_on_startup()
+    yield
+
+
 # ── 메타데이터 ────────────────────────────────────────────────
 
 API_TITLE = "비식별화 도구 API"
@@ -122,6 +135,7 @@ app = FastAPI(
     version=API_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS 설정 (사내망 배포용 — 브라우저 직접 접근 허용)
@@ -151,13 +165,6 @@ async def serve_index():
     if index_path.exists():
         return FileResponse(str(index_path))
     return {"message": "index.html이 없습니다. static/index.html을 배치하세요."}
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    """서버 시작 시 만료 토큰 + 고아 파일 정리."""
-    from api.detect_router import startup_cleanup
-    startup_cleanup()
 
 
 # ── 기본 엔드포인트 ────────────────────────────────────────────

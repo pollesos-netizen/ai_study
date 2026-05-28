@@ -539,7 +539,7 @@ def detect_in_hwpx(
     ner_detect_func: Callable[[str], list[dict[str, Any]]] | None = None,
     ai_predict_func: Callable[[str], tuple[str, float, dict[str, float]]] | None = None,
     ner_threshold: float = 0.8,
-    ai_threshold: float = 0.4,
+    ai_threshold: float = 0.6,
 ) -> DeidentifyPlan:
     """
     hwpx 파일의 모든 paragraph(본문 + 표 셀)를 순회하며 탐지를 수행하고 DeidentifyPlan을 생성합니다.

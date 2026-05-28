@@ -16,6 +16,7 @@ FeedbackStore.enabled=True + _save_impl() 구현 후 활성화.
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Literal
@@ -29,6 +30,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 router = APIRouter()
+_logger = logging.getLogger(__name__)
 
 
 # ── 요청/응답 모델 ─────────────────────────────────────────────
@@ -87,6 +89,33 @@ async def submit_feedback(payload: FeedbackPayload) -> JSONResponse:
 
     store = get_store()
     saved = store.save(feedback)
+
+    # AI 추론 실패 로그 (app.log WARNING 레벨)
+    ctx = (payload.context or "")[:80].replace("\n", " ")
+    if feedback.is_false_positive():
+        _logger.warning(
+            "[feedback] 오탐 | %s | AI=%s→X | %s | %s",
+            payload.fileType or "?",
+            payload.aiGrade or "?",
+            payload.locationLabel,
+            ctx,
+        )
+    elif not feedback.is_agreement():
+        _logger.warning(
+            "[feedback] 등급불일치 | %s | AI=%s→사용자=%s | %s | %s",
+            payload.fileType or "?",
+            payload.aiGrade or "?",
+            payload.userGrade,
+            payload.locationLabel,
+            ctx,
+        )
+    else:
+        _logger.info(
+            "[feedback] 동의 | %s | grade=%s | %s",
+            payload.fileType or "?",
+            payload.aiGrade or "?",
+            payload.locationLabel,
+        )
 
     return JSONResponse(content={
         "success": True,

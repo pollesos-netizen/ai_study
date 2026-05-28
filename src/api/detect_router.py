@@ -53,9 +53,11 @@ downloadToken 저장소:
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -80,6 +82,15 @@ from api.files import (
 )
 
 router = APIRouter()
+_logger = logging.getLogger(__name__)
+
+# ── 전역 모델 캐시 (서버 시작 시 1회 로드) ──────────────────────
+_regex_func = None
+_ner_func = None
+_ai_func = None
+
+# sklearn 레이블 → C/S/O 매핑
+_SKLEARN_LABEL_MAP = {"개인정보": "S", "민감정보": "C", "일반": "O"}
 
 # ── 기본값 ────────────────────────────────────────────────────
 
@@ -130,6 +141,22 @@ def _get_ai_model_path() -> str:
     ).strip()
 
 
+def _get_sklearn_model_path() -> str:
+    """환경 변수 SKLEARN_MODEL_PATH에서 sklearn 모델 경로를 읽는다."""
+    return os.environ.get(
+        "SKLEARN_MODEL_PATH",
+        "models/privacy_sentence_model_v2.pkl",
+    ).strip()
+
+
+def _get_ai_model_type() -> str:
+    """환경 변수 AI_MODEL_TYPE에서 사용할 AI 모델 종류를 읽는다.
+
+    값: "keras" (기본) | "sklearn"
+    """
+    return os.environ.get("AI_MODEL_TYPE", "keras").strip().lower()
+
+
 def _get_ner_threshold() -> float:
     """NER 탐지 신뢰도 임계값.
 
@@ -173,15 +200,29 @@ def get_model_status() -> dict[str, str]:
         except ImportError:
             status["ner"] = "not_installed"
 
-    ai_path = _get_ai_model_path()
-    if not ai_path:
-        status["ai"] = "not_configured"
+    model_type = _get_ai_model_type()
+    status["ai_model_type"] = model_type
+
+    if model_type == "sklearn":
+        sklearn_path = _get_sklearn_model_path()
+        if not sklearn_path:
+            status["ai"] = "not_configured"
+        else:
+            try:
+                import joblib  # noqa: F401
+                status["ai"] = "available" if Path(sklearn_path).exists() else "path_not_found"
+            except ImportError:
+                status["ai"] = "not_installed"
     else:
-        try:
-            import tensorflow as tf  # noqa: F401
-            status["ai"] = "available" if Path(ai_path).exists() else "path_not_found"
-        except ImportError:
-            status["ai"] = "not_installed"
+        ai_path = _get_ai_model_path()
+        if not ai_path:
+            status["ai"] = "not_configured"
+        else:
+            try:
+                import tensorflow as tf  # noqa: F401
+                status["ai"] = "available" if Path(ai_path).exists() else "path_not_found"
+            except ImportError:
+                status["ai"] = "not_installed"
 
     return status
 
@@ -209,8 +250,8 @@ def _load_ner_func():
         return None
 
 
-def _load_ai_func():
-    """AI 분류 함수 로드. 환경 변수 AI_MODEL_PATH 필요."""
+def _load_keras_func():
+    """Keras AI 분류 함수 로드. 환경 변수 AI_MODEL_PATH 필요."""
     ai_path = _get_ai_model_path()
     if not ai_path or not Path(ai_path).exists():
         return None
@@ -231,6 +272,77 @@ def _load_ai_func():
         return None
 
 
+def _load_sklearn_func():
+    """sklearn AI 분류 함수 로드. 환경 변수 SKLEARN_MODEL_PATH 필요."""
+    sklearn_path = _get_sklearn_model_path()
+    if not sklearn_path or not Path(sklearn_path).exists():
+        return None
+    try:
+        import joblib
+        model = joblib.load(sklearn_path)
+        classes = list(model.classes_)
+
+        def predict(text: str):
+            probs = model.predict_proba([text])[0].tolist()
+            cso_probs: dict[str, float] = {"C": 0.0, "S": 0.0, "O": 0.0}
+            for cls, prob in zip(classes, probs):
+                cso = _SKLEARN_LABEL_MAP.get(cls)
+                if cso:
+                    cso_probs[cso] += prob
+            best = max(cso_probs, key=lambda k: cso_probs[k])
+            return best, float(cso_probs[best]), cso_probs
+
+        return predict
+    except Exception:
+        return None
+
+
+def _load_ai_func():
+    """AI_MODEL_TYPE 환경 변수에 따라 keras 또는 sklearn 분류 함수를 로드한다.
+
+    AI_MODEL_TYPE=keras  (기본) → Keras 모델 (AI_MODEL_PATH)
+    AI_MODEL_TYPE=sklearn        → sklearn 모델 (SKLEARN_MODEL_PATH)
+    """
+    if _get_ai_model_type() == "sklearn":
+        return _load_sklearn_func()
+    return _load_keras_func()
+
+
+def load_models_on_startup() -> None:
+    """서버 시작 시 1회 호출 — NER/AI 모델을 전역 변수에 로드."""
+    global _regex_func, _ner_func, _ai_func
+
+    t0 = time.perf_counter()
+    _regex_func = _load_regex_func()
+    _logger.info("[startup] regex 로드 완료 (%.2fs)", time.perf_counter() - t0)
+
+    ner_path = _get_ner_model_path()
+    if ner_path:
+        t1 = time.perf_counter()
+        _ner_func = _load_ner_func()
+        status = "완료" if _ner_func else "실패"
+        _logger.info("[startup] NER 모델 로드 %s (%.2fs)", status, time.perf_counter() - t1)
+    else:
+        _logger.info("[startup] NER_MODEL_PATH 미설정 — NER 비활성")
+
+    model_type = _get_ai_model_type()
+    if model_type == "sklearn":
+        ai_path = _get_sklearn_model_path()
+    else:
+        ai_path = _get_ai_model_path()
+
+    if ai_path and Path(ai_path).exists():
+        t2 = time.perf_counter()
+        _ai_func = _load_ai_func()
+        status = "완료" if _ai_func else "실패"
+        _logger.info(
+            "[startup] AI 모델 로드 %s (%s / %.2fs)",
+            status, model_type, time.perf_counter() - t2,
+        )
+    else:
+        _logger.info("[startup] AI 모델 경로 미설정/없음 — AI 비활성 (%s)", model_type)
+
+
 # ── xlsx 처리 ──────────────────────────────────────────────────
 
 def _run_xlsx(
@@ -245,9 +357,9 @@ def _run_xlsx(
     from deidentify_target_builder import build_deidentify_plan
     from xlsx_deidentify_apply import apply_plan_to_xlsx
 
-    regex_func = _load_regex_func()
-    ner_func = _load_ner_func() if use_ner else None
-    ai_func = _load_ai_func() if use_ai else None
+    regex_func = _regex_func or _load_regex_func()
+    ner_func = _ner_func if use_ner else None
+    ai_func = _ai_func if use_ai else None
 
     wb = openpyxl.load_workbook(str(file_path))
     detections: list[dict] = []
@@ -391,9 +503,9 @@ def _run_guide(
     use_ai: bool,
 ) -> dict[str, Any]:
     """docx/pptx/hwpx/pdf → guide 모드 처리."""
-    regex_func = _load_regex_func()
-    ner_func = _load_ner_func() if use_ner else None
-    ai_func = _load_ai_func() if use_ai else None
+    regex_func = _regex_func or _load_regex_func()
+    ner_func = _ner_func if use_ner else None
+    ai_func = _ai_func if use_ai else None
 
     kwargs = dict(
         regex_detect_func=regex_func,
@@ -488,6 +600,7 @@ async def detect(
     suffix = Path(filename).suffix.lower()
     tmp_path = save_upload_tmp(content, suffix)
 
+    t_start = time.perf_counter()
     try:
         if file_type == "xlsx":
             result_dict = _run_xlsx(
@@ -499,9 +612,13 @@ async def detect(
                 tmp_path, file_type=file_type,
                 deletion_mode=deletionMode, use_ner=useNer, use_ai=useAi,
             )
+        elapsed = time.perf_counter() - t_start
+        _logger.info("[detect] %s / %s / %.3fs", filename, file_type, elapsed)
         return _success(result_dict, filename=filename, filesize=filesize)
 
     except Exception as exc:
+        elapsed = time.perf_counter() - t_start
+        _logger.error("[detect] %s / %s / %.3fs / 오류: %s", filename, file_type, elapsed, exc)
         return _error(
             500, "INTERNAL_ERROR",
             f"처리 중 오류가 발생했습니다: {type(exc).__name__}: {exc}",

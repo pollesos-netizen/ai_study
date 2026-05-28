@@ -169,3 +169,38 @@
 2026-05-26 16:26:48 [INFO] uvicorn.error: Waiting for application shutdown.
 2026-05-26 16:26:48 [INFO] uvicorn.error: Application shutdown complete.
 2026-05-26 16:26:48 [INFO] uvicorn.error: Finished server process [18336]
+2026-05-27 11:00:50 [INFO] uvicorn.error: Started server process [10688]
+2026-05-27 11:00:50 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-27 11:00:50 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-27 11:01:05 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (15.10s)
+2026-05-27 11:01:12 [WARNING] tensorflow: TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+2026-05-27 11:01:12 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (7.29s)
+2026-05-27 11:01:12 [INFO] uvicorn.error: Application startup complete.
+2026-05-27 11:01:12 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-27 11:01:13 [INFO] uvicorn.access: 127.0.0.1:54934 - "GET / HTTP/1.1" 200
+2026-05-27 11:01:14 [INFO] uvicorn.access: 127.0.0.1:54934 - "GET /api/version HTTP/1.1" 200
+2026-05-27 11:01:14 [INFO] uvicorn.access: 127.0.0.1:63862 - "GET /favicon.ico HTTP/1.1" 404
+2026-05-27 11:01:43 [INFO] api.detect_router: [detect] test.hwpx / hwpx / 5.678s
+2026-05-27 11:01:43 [INFO] uvicorn.access: 127.0.0.1:51476 - "POST /api/detect HTTP/1.1" 200
+2026-05-27 11:02:13 [INFO] api.detect_router: [detect] test.pptx / pptx / 20.587s
+2026-05-27 11:02:13 [INFO] uvicorn.access: 127.0.0.1:54865 - "POST /api/detect HTTP/1.1" 200
+2026-05-27 11:05:13 [INFO] uvicorn.error: Shutting down
+2026-05-27 11:05:13 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-27 11:05:13 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-27 11:05:13 [INFO] uvicorn.error: Finished server process [10688]
+2026-05-27 11:29:37 [INFO] uvicorn.error: Started server process [7724]
+2026-05-27 11:29:37 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-27 11:29:37 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-27 11:29:45 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (7.57s)
+2026-05-27 11:29:48 [WARNING] tensorflow: TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+2026-05-27 11:29:48 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (3.12s)
+2026-05-27 11:29:48 [INFO] uvicorn.error: Application startup complete.
+2026-05-27 11:29:48 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-27 11:29:48 [INFO] uvicorn.access: 127.0.0.1:61459 - "GET / HTTP/1.1" 200
+2026-05-27 11:29:48 [INFO] uvicorn.access: 127.0.0.1:61459 - "GET /api/version HTTP/1.1" 200
+2026-05-27 11:30:04 [INFO] api.detect_router: [detect] test.hwpx / hwpx / 5.548s
+2026-05-27 11:30:04 [INFO] uvicorn.access: 127.0.0.1:57773 - "POST /api/detect HTTP/1.1" 200
+2026-05-27 13:20:37 [INFO] uvicorn.error: Shutting down
+2026-05-27 13:20:37 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-27 13:20:37 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-27 13:20:37 [INFO] uvicorn.error: Finished server process [7724]
