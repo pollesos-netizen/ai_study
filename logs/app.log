@@ -277,3 +277,19 @@
 2026-05-28 10:13:32 [INFO] uvicorn.error: Waiting for application shutdown.
 2026-05-28 10:13:32 [INFO] uvicorn.error: Application shutdown complete.
 2026-05-28 10:13:32 [INFO] uvicorn.error: Finished server process [19576]
+2026-05-28 10:43:30 [INFO] uvicorn.error: Started server process [188]
+2026-05-28 10:43:30 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-28 10:43:30 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-28 10:43:38 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (7.71s)
+2026-05-28 10:43:38 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.05s)
+2026-05-28 10:43:38 [INFO] uvicorn.error: Application startup complete.
+2026-05-28 10:43:38 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-28 10:43:43 [INFO] uvicorn.access: 127.0.0.1:49619 - "GET /docs HTTP/1.1" 200
+2026-05-28 10:43:43 [INFO] uvicorn.access: 127.0.0.1:49619 - "GET /openapi.json HTTP/1.1" 200
+2026-05-28 10:44:01 [INFO] uvicorn.access: 127.0.0.1:57743 - "GET /redoc HTTP/1.1" 200
+2026-05-28 10:44:01 [INFO] uvicorn.access: 127.0.0.1:57743 - "GET /openapi.json HTTP/1.1" 200
+2026-05-28 10:44:47 [INFO] uvicorn.access: 127.0.0.1:61699 - "GET /api/version HTTP/1.1" 200
+2026-05-28 10:51:57 [INFO] uvicorn.error: Shutting down
+2026-05-28 10:51:57 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-28 10:51:57 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-28 10:51:57 [INFO] uvicorn.error: Finished server process [188]

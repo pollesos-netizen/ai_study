@@ -228,29 +228,3 @@ def _check_optional_import(module_name: str) -> str:
         return "not_installed"
 
 
-# ── 루트 엔드포인트 ─────────────────────────────────────────────
-
-@app.get(
-    "/",
-    summary="API 루트",
-    description="API 사용 안내를 표시합니다.",
-    tags=["system"],
-)
-async def root() -> dict[str, Any]:
-    """API 사용 안내."""
-    return {
-        "service": API_TITLE,
-        "version": API_VERSION,
-        "documentation": {
-            "swagger": "/docs",
-            "redoc": "/redoc",
-        },
-        "endpoints": {
-            "health": "/api/health",
-            "version": "/api/version",
-        },
-        "message": (
-            "이 API는 5종 파일 형식의 비식별화 처리를 제공합니다. "
-            "/docs 에서 자세한 사용법을 확인하세요."
-        ),
-    }
