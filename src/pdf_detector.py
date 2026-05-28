@@ -473,8 +473,8 @@ def detect_in_pdf(
                     detections.append(detection)
                     order += 1
 
-        # AI
-        if ai_predict_func is not None:
+        # AI (regex가 이미 탐지한 줄은 건너뜀)
+        if ai_predict_func is not None and not raw_regex:
             try:
                 grade, confidence, prob_map = ai_predict_func(line.text)
             except Exception as exc:

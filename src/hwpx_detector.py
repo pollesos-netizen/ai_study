@@ -584,8 +584,8 @@ def detect_in_hwpx(
                     detections.append(detection)
                     order += 1
 
-        # AI
-        if ai_predict_func is not None:
+        # AI (regex가 이미 탐지한 단락은 건너뜀)
+        if ai_predict_func is not None and not raw_regex:
             try:
                 grade, confidence, prob_map = ai_predict_func(paragraph.text)
             except Exception as exc:
