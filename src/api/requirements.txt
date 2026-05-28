@@ -1,27 +1,31 @@
 # 비식별화 도구 의존성
 
-# === 파일 처리 라이브러리 (12~16주차) ===
-python-docx>=1.1.0       # docx
-python-pptx>=1.0.0       # pptx
-openpyxl>=3.1.0          # xlsx
-pdfplumber>=0.11.0       # pdf
+# === 파일 처리 ===
+python-docx>=1.1.0          # docx
+python-pptx>=1.0.0          # pptx
+openpyxl>=3.1.0             # xlsx
+pdfplumber>=0.11.0          # pdf
+lxml>=5.0.0                 # hwpx (XML 파싱)
 
-# === HTTP API (17주차) ===
-fastapi>=0.115.0         # 웹 프레임워크
-uvicorn[standard]>=0.32.0  # ASGI 서버
-python-multipart>=0.0.20  # multipart/form-data 처리 (파일 업로드)
-pydantic>=2.10.0         # 데이터 검증/직렬화 (FastAPI 의존성)
+# === HTTP API ===
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.20    # 파일 업로드
+pydantic>=2.10.0
 
-# === 모델 (선택, NER/AI 활용 시) ===
-# transformers>=4.45.0   # NER (KoELECTRA)
-# tensorflow>=2.18.0     # AI 분류 (privacy_cso_char_keras_model)
-# torch>=2.5.0           # NER 백엔드
+# === 환경변수 ===
+python-dotenv>=1.0.0        # .env 파일 로드
 
-# === 테스트 (선택) ===
-# reportlab>=4.4.0       # PDF 단위 테스트 생성용
+# === AI 모델 (sklearn — 기본) ===
+scikit-learn>=1.3.0
+joblib>=1.3.0
 
-# 회사 환경 설치 시 SSL 이슈가 있을 수 있음 (12주차 메모리 참고)
-# 설치 실패 시 우회 방법:
-#   - 스마트폰 핫스팟으로 wheel 다운로드
-#   - webmail로 사내 PC 전송
-#   - pip install <wheel파일>
+# === AI 모델 (NER — useNer=true 사용 시) ===
+# transformers>=4.45.0
+# torch>=2.5.0
+
+# === AI 모델 (Keras — AI_MODEL_TYPE=keras 사용 시) ===
+# tensorflow>=2.18.0
+
+# 설치 실패 시 (사내망 SSL 이슈):
+#   스마트폰 핫스팟으로 wheel 다운로드 후 pip install <wheel파일>
