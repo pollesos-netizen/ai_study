@@ -387,7 +387,8 @@ def _run_xlsx(
                             return getattr(obj, n)
                     return default
 
-                for raw in (regex_func(text) or []):
+                regex_hits = regex_func(text) or []
+                for raw in regex_hits:
                     detections.append({
                         "label": _g(raw, "label", default=""),
                         "matched": _g(raw, "value", "matched", default=""),
@@ -436,7 +437,7 @@ def _run_xlsx(
                         })
                         order += 1
 
-                if ai_func:
+                if ai_func and not regex_hits:
                     import logging as _log
                     try:
                         grade, confidence, prob_map = ai_func(text)

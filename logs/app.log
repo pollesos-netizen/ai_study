@@ -204,3 +204,76 @@
 2026-05-27 13:20:37 [INFO] uvicorn.error: Waiting for application shutdown.
 2026-05-27 13:20:37 [INFO] uvicorn.error: Application shutdown complete.
 2026-05-27 13:20:37 [INFO] uvicorn.error: Finished server process [7724]
+2026-05-28 09:16:34 [INFO] uvicorn.error: Started server process [22168]
+2026-05-28 09:16:34 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-28 09:16:34 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-28 09:16:50 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (16.00s)
+2026-05-28 09:16:51 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.11s)
+2026-05-28 09:16:51 [INFO] uvicorn.error: Application startup complete.
+2026-05-28 09:16:51 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-28 09:16:54 [INFO] uvicorn.access: 127.0.0.1:64196 - "GET / HTTP/1.1" 200
+2026-05-28 09:16:54 [INFO] uvicorn.access: 127.0.0.1:64196 - "GET /api/version HTTP/1.1" 200
+2026-05-28 09:16:54 [INFO] uvicorn.access: 127.0.0.1:62590 - "GET /favicon.ico HTTP/1.1" 404
+2026-05-28 09:17:12 [INFO] api.detect_router: [detect] test.hwpx / hwpx / 0.722s
+2026-05-28 09:17:12 [INFO] uvicorn.access: 127.0.0.1:62166 - "POST /api/detect HTTP/1.1" 200
+2026-05-28 09:17:29 [INFO] api.detect_router: [detect] test.pdf / pdf / 1.543s
+2026-05-28 09:17:29 [INFO] uvicorn.access: 127.0.0.1:52364 - "POST /api/detect HTTP/1.1" 200
+2026-05-28 09:17:49 [INFO] api.detect_router: [detect] test2.hwpx / hwpx / 2.252s
+2026-05-28 09:17:49 [INFO] uvicorn.access: 127.0.0.1:54018 - "POST /api/detect HTTP/1.1" 200
+2026-05-28 09:18:05 [INFO] api.detect_router: [detect] test2.pdf / pdf / 2.756s
+2026-05-28 09:18:05 [INFO] uvicorn.access: 127.0.0.1:63466 - "POST /api/detect HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 6쪽 15번째 줄: • 기간의 경과 등으로 비공개 필요성이 소멸된 정보 | • 기간의 경과 등으로 비공개 필요성이 소멸된 정보
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:55389 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 8쪽 3번째 줄: 특정 법령이나 지침에서 비공개로 명시된 대테러 계획, ... | 특정 법령이나 지침에서 비공개로 명시된 대테러 계획, 국가 중요시설 보호계획 원문 등
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:56288 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 20쪽 8번째 줄: O 등급 C 등급 | O 등급 C 등급
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:55389 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 9쪽 8번째 줄: 벤더 계약서 부속 설계/기술자료, 외주 유지보수 용역사... | 벤더 계약서 부속 설계/기술자료, 외주 유지보수 용역사가 제공한 독점적 점검 매뉴얼, 부품 단가 및 원가 내역, 제안서 원문
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:61757 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 11쪽 13번째 줄: 관제 지시 및 운전 취급 기록 상세 위치 정밀도 하향(... | 관제 지시 및 운전 취급 기록 상세 위치 정밀도 하향(예: 특정 좌표 → 구간 단위 제공),
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:59748 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 17쪽 4번째 줄: 모델명, 네트워크 IP, 포트 노출되어 위험 모델명 등... | 모델명, 네트워크 IP, 포트 노출되어 위험 모델명 등 장비식별자 삭제,
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:61822 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 20쪽 12번째 줄: 5) S등급 데이터 비식별화 조치 결과 검토 및 승인 | 5) S등급 데이터 비식별화 조치 결과 검토 및 승인
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:56288 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 20쪽 7번째 줄: S 등급 | S 등급
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:50599 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:18:45 [WARNING] api.feedback_router: [feedback] 오탐 | pdf | AI=C→X | 20쪽 17번째 줄: (비식별화 조치 내역 및 결과) | (비식별화 조치 내역 및 결과)
+2026-05-28 09:18:45 [INFO] uvicorn.access: 127.0.0.1:55389 - "POST /api/feedback HTTP/1.1" 200
+2026-05-28 09:53:42 [INFO] uvicorn.error: Shutting down
+2026-05-28 09:53:42 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-28 09:53:42 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-28 09:53:42 [INFO] uvicorn.error: Finished server process [22168]
+2026-05-28 09:54:29 [INFO] uvicorn.error: Started server process [3860]
+2026-05-28 09:54:29 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-28 09:54:29 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-28 09:54:36 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (7.26s)
+2026-05-28 09:54:36 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.05s)
+2026-05-28 09:54:36 [INFO] uvicorn.error: Application startup complete.
+2026-05-28 09:54:36 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-28 09:54:43 [INFO] uvicorn.access: 127.0.0.1:51341 - "GET / HTTP/1.1" 200
+2026-05-28 09:54:43 [INFO] uvicorn.access: 127.0.0.1:51341 - "GET /api/version HTTP/1.1" 200
+2026-05-28 09:55:12 [INFO] api.detect_router: [detect] test.pptx / pptx / 2.812s
+2026-05-28 09:55:12 [INFO] uvicorn.access: 127.0.0.1:64638 - "POST /api/detect HTTP/1.1" 200
+2026-05-28 09:55:27 [INFO] api.detect_router: [detect] xlsx_test1.xlsx / xlsx / 0.118s
+2026-05-28 09:55:27 [INFO] uvicorn.access: 127.0.0.1:53220 - "POST /api/detect HTTP/1.1" 200
+2026-05-28 09:56:59 [INFO] uvicorn.access: 127.0.0.1:51119 - "GET /api/download/ELyw31ZOhF2j4ffwS_gCYRPL_jnyrM_OkWkwt3r2PtI HTTP/1.1" 200
+2026-05-28 10:08:11 [INFO] uvicorn.error: Shutting down
+2026-05-28 10:08:11 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-28 10:08:12 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-28 10:08:12 [INFO] uvicorn.error: Finished server process [3860]
+2026-05-28 10:08:22 [INFO] uvicorn.error: Started server process [19576]
+2026-05-28 10:08:22 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-28 10:08:22 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-28 10:08:29 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (7.24s)
+2026-05-28 10:08:29 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.05s)
+2026-05-28 10:08:29 [INFO] uvicorn.error: Application startup complete.
+2026-05-28 10:08:29 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-28 10:08:34 [INFO] uvicorn.access: 127.0.0.1:50515 - "GET / HTTP/1.1" 200
+2026-05-28 10:08:34 [INFO] uvicorn.access: 127.0.0.1:50515 - "GET /api/version HTTP/1.1" 200
+2026-05-28 10:08:43 [INFO] api.detect_router: [detect] xlsx_test1.xlsx / xlsx / 0.125s
+2026-05-28 10:08:43 [INFO] uvicorn.access: 127.0.0.1:51033 - "POST /api/detect HTTP/1.1" 200
+2026-05-28 10:13:32 [INFO] uvicorn.error: Shutting down
+2026-05-28 10:13:32 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-28 10:13:32 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-28 10:13:32 [INFO] uvicorn.error: Finished server process [19576]
