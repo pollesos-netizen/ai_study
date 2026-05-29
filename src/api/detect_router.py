@@ -227,6 +227,19 @@ def get_model_status() -> dict[str, str]:
     return status
 
 
+def _should_skip_ai(text: str) -> bool:
+    """AI 분류 적합 기준 미달 여부.
+
+    - 10자 미만: 목록 라벨·단어 1~2개 수준 — 모델이 의미 있는 판단 불가
+    - 한글 비율 20% 미만: 모델이 한국어만 학습했으므로 영문 위주 텍스트 제외
+    """
+    stripped = text.strip()
+    if len(stripped) < 10:
+        return True
+    korean = sum(1 for c in stripped if "가" <= c <= "힣")
+    return korean / len(stripped) < 0.20
+
+
 def _load_regex_func():
     from regex_detector import detect_patterns
     return detect_patterns
@@ -420,6 +433,8 @@ def _run_xlsx(
                         if float(raw.get("score", 0)) < _get_ner_threshold():
                             continue
                         s, e = int(raw.get("start", 0)), int(raw.get("end", 0))
+                        if e - s <= 2:  # "장 소" 등 성+직함 오인식 방지
+                            continue
                         detections.append({
                             "label": "성명",
                             "matched": text[s:e],
@@ -437,7 +452,7 @@ def _run_xlsx(
                         })
                         order += 1
 
-                if ai_func and not regex_hits:
+                if ai_func and not regex_hits and not _should_skip_ai(text):
                     import logging as _log
                     try:
                         grade, confidence, prob_map = ai_func(text)
@@ -487,6 +502,46 @@ def _run_xlsx(
 
     if actual_output.exists():
         d["downloadToken"] = create_download_token(actual_output, original_name)
+    else:
+        d["downloadToken"] = None
+
+    d["outputFilePath"] = None
+    return d
+
+
+# ── csv 처리 ──────────────────────────────────────────────────
+
+def _run_csv(
+    file_path: Path,
+    original_name: str,
+    deletion_mode: str,
+    use_ner: bool,
+    use_ai: bool,
+) -> dict[str, Any]:
+    """csv → applied 모드 처리 + downloadToken 생성."""
+    from csv_detector import detect_and_apply_csv
+
+    regex_func = _regex_func or _load_regex_func()
+    ner_func   = _ner_func if use_ner else None
+    ai_func    = _ai_func  if use_ai  else None
+
+    output_path = get_tmp_dir() / f"result_{secrets.token_hex(8)}.csv"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    result = detect_and_apply_csv(
+        str(file_path),
+        str(output_path),
+        regex_detect_func=regex_func,
+        ner_detect_func=ner_func,
+        ai_predict_func=ai_func,
+        ner_threshold=_get_ner_threshold(),
+        ai_threshold=_get_ai_threshold(),
+        deletion_mode=deletion_mode,
+    )
+
+    d = result.to_dict()
+    if output_path.exists():
+        d["downloadToken"] = create_download_token(output_path, original_name)
     else:
         d["downloadToken"] = None
 
@@ -608,6 +663,11 @@ async def detect(
                 tmp_path, original_name=filename,
                 deletion_mode=deletionMode, use_ner=useNer, use_ai=useAi,
             )
+        elif file_type == "csv":
+            result_dict = _run_csv(
+                tmp_path, original_name=filename,
+                deletion_mode=deletionMode, use_ner=useNer, use_ai=useAi,
+            )
         else:
             result_dict = _run_guide(
                 tmp_path, file_type=file_type,
@@ -656,8 +716,15 @@ async def download(token: str) -> FileResponse:
     original_name = entry.original_name
     _token_store_remove(token)
 
+    suffix = Path(original_name).suffix.lower()
     stem = Path(original_name).stem
-    download_name = f"{stem}_deidentified.xlsx"
+    download_name = f"{stem}_deidentified{suffix}"
+
+    _MEDIA_TYPES = {
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".csv":  "text/csv; charset=utf-8",
+    }
+    media_type = _MEDIA_TYPES.get(suffix, "application/octet-stream")
 
     def _cleanup():
         try:
@@ -668,7 +735,7 @@ async def download(token: str) -> FileResponse:
     return FileResponse(
         path=str(file_path),
         filename=download_name,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        media_type=media_type,
         background=BackgroundTask(_cleanup),
     )
 

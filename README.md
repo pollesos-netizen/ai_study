@@ -7,7 +7,7 @@
 ## 빠른 시작
 
 ```bash
-# 의존성 설치
+# 의존성 설치 (루트의 requirements.txt 아님 — src/api/ 것 사용)
 pip install -r src/api/requirements.txt
 
 # 서버 실행

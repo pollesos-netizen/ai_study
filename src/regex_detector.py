@@ -142,6 +142,28 @@ PATTERNS = [
         "desc": "정밀 시각 — 보안 공백과 결합 시 범주화 권장",
     },
     {
+        "id": "credit_card",
+        "label": "신용카드번호",
+        "grade": "C",
+        "action": "삭제",
+        "pattern": (
+            r"(?<!\d)"
+            r"\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4}"
+            r"(?!\d)"
+        ),
+        "flags": 0,
+        "desc": "신용·체크카드번호 — 4×4자리 형식",
+    },
+    {
+        "id": "driver_license",
+        "label": "운전면허번호",
+        "grade": "S",
+        "action": "삭제",
+        "pattern": r"(?<!\d)\d{2}-\d{2}-\d{6}-\d{2}(?!\d)",
+        "flags": 0,
+        "desc": "운전면허번호 — 시도코드-연도-일련번호-검증",
+    },
+    {
         "id": "vlan_port",
         "label": "VLAN/포트 정보",
         "grade": "C",

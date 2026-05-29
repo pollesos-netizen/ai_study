@@ -19,6 +19,7 @@ SUPPORTED_EXTENSIONS: dict[str, str] = {
     ".pptx": "pptx",
     ".hwpx": "hwpx",
     ".pdf":  "pdf",
+    ".csv":  "csv",
 }
 
 

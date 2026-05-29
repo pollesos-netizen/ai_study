@@ -343,6 +343,9 @@ def _make_target_dict_from_ner(
     start = int(start)
     end = int(end)
 
+    if end - start <= 2:  # "장 소", "박 사" 등 성+직함 오인식 방지
+        return None
+
     matched = line.text[start:end] or raw.get("word") or ""
 
     return {
@@ -404,6 +407,14 @@ def _make_target_dict_from_ai(
         ),
         "_order": order,
     }
+
+
+def _should_skip_ai(text: str) -> bool:
+    stripped = text.strip()
+    if len(stripped) < 10:
+        return True
+    korean = sum(1 for c in stripped if "가" <= c <= "힣")
+    return korean / len(stripped) < 0.20
 
 
 # ── 탐지 파이프라인 ────────────────────────────────────────────
@@ -473,8 +484,8 @@ def detect_in_pdf(
                     detections.append(detection)
                     order += 1
 
-        # AI (regex가 이미 탐지한 줄은 건너뜀)
-        if ai_predict_func is not None and not raw_regex:
+        # AI (regex가 이미 탐지한 줄은 건너뜀, 짧거나 비한국어 텍스트도 건너뜀)
+        if ai_predict_func is not None and not raw_regex and not _should_skip_ai(line.text):
             try:
                 grade, confidence, prob_map = ai_predict_func(line.text)
             except Exception as exc:

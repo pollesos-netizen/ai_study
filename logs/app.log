@@ -305,3 +305,75 @@
 2026-05-28 11:26:59 [INFO] uvicorn.error: Waiting for application shutdown.
 2026-05-28 11:26:59 [INFO] uvicorn.error: Application shutdown complete.
 2026-05-28 11:26:59 [INFO] uvicorn.error: Finished server process [1072]
+2026-05-29 15:45:26 [INFO] uvicorn.error: Started server process [10812]
+2026-05-29 15:45:26 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-29 15:45:26 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-29 15:45:40 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (14.10s)
+2026-05-29 15:45:40 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.07s)
+2026-05-29 15:45:40 [INFO] uvicorn.error: Application startup complete.
+2026-05-29 15:45:40 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-29 15:45:55 [INFO] uvicorn.access: 127.0.0.1:51146 - "GET / HTTP/1.1" 200
+2026-05-29 15:45:55 [INFO] uvicorn.access: 127.0.0.1:51146 - "GET /api/version HTTP/1.1" 200
+2026-05-29 15:45:55 [INFO] uvicorn.access: 127.0.0.1:49899 - "GET /favicon.ico HTTP/1.1" 404
+2026-05-29 15:46:28 [INFO] api.detect_router: [detect] test.pdf / pdf / 1.700s
+2026-05-29 15:46:28 [INFO] uvicorn.access: 127.0.0.1:51461 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:47:18 [INFO] api.detect_router: [detect] test.pptx / pptx / 3.222s
+2026-05-29 15:47:18 [INFO] uvicorn.access: 127.0.0.1:57385 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:47:38 [INFO] uvicorn.error: Shutting down
+2026-05-29 15:47:38 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-29 15:47:38 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-29 15:47:38 [INFO] uvicorn.error: Finished server process [10812]
+2026-05-29 15:47:41 [INFO] uvicorn.error: Started server process [21892]
+2026-05-29 15:47:41 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-29 15:47:41 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-29 15:47:48 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (7.56s)
+2026-05-29 15:47:48 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.08s)
+2026-05-29 15:47:48 [INFO] uvicorn.error: Application startup complete.
+2026-05-29 15:47:48 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-29 15:47:49 [INFO] uvicorn.access: 127.0.0.1:55027 - "GET /api/version HTTP/1.1" 200
+2026-05-29 15:47:59 [INFO] api.detect_router: [detect] test.pdf / pdf / 1.518s
+2026-05-29 15:47:59 [INFO] uvicorn.access: 127.0.0.1:57627 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:48:19 [INFO] api.detect_router: [detect] test.pptx / pptx / 3.075s
+2026-05-29 15:48:19 [INFO] uvicorn.access: 127.0.0.1:62947 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:48:36 [INFO] uvicorn.error: Shutting down
+2026-05-29 15:48:36 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-29 15:48:36 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-29 15:48:36 [INFO] uvicorn.error: Finished server process [21892]
+2026-05-29 15:48:48 [INFO] uvicorn.error: Started server process [10624]
+2026-05-29 15:48:48 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-29 15:48:48 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-29 15:48:55 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (7.31s)
+2026-05-29 15:48:55 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.07s)
+2026-05-29 15:48:55 [INFO] uvicorn.error: Application startup complete.
+2026-05-29 15:48:55 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-29 15:49:05 [INFO] api.detect_router: [detect] test.pptx / pptx / 3.174s
+2026-05-29 15:49:05 [INFO] uvicorn.access: 127.0.0.1:56787 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:49:19 [INFO] api.detect_router: [detect] test.hwpx / hwpx / 0.778s
+2026-05-29 15:49:19 [INFO] uvicorn.access: 127.0.0.1:63773 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:49:26 [INFO] api.detect_router: [detect] test.pdf / pdf / 1.486s
+2026-05-29 15:49:26 [INFO] uvicorn.access: 127.0.0.1:51889 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:49:43 [INFO] api.detect_router: [detect] test2.hwpx / hwpx / 2.753s
+2026-05-29 15:49:43 [INFO] uvicorn.access: 127.0.0.1:64218 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:49:57 [INFO] api.detect_router: [detect] test2.pdf / pdf / 3.032s
+2026-05-29 15:49:57 [INFO] uvicorn.access: 127.0.0.1:50313 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:50:32 [INFO] api.detect_router: [detect] test.docx / docx / 1.099s
+2026-05-29 15:50:32 [INFO] uvicorn.access: 127.0.0.1:55101 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 15:58:00 [INFO] uvicorn.error: Shutting down
+2026-05-29 15:58:00 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-29 15:58:00 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-29 15:58:00 [INFO] uvicorn.error: Finished server process [10624]
+2026-05-29 15:59:35 [INFO] uvicorn.error: Started server process [13952]
+2026-05-29 15:59:35 [INFO] uvicorn.error: Waiting for application startup.
+2026-05-29 15:59:35 [INFO] api.detect_router: [startup] regex 로드 완료 (0.00s)
+2026-05-29 15:59:42 [INFO] api.detect_router: [startup] NER 모델 로드 완료 (7.52s)
+2026-05-29 15:59:42 [INFO] api.detect_router: [startup] AI 모델 로드 완료 (sklearn / 0.07s)
+2026-05-29 15:59:42 [INFO] uvicorn.error: Application startup complete.
+2026-05-29 15:59:42 [INFO] uvicorn.error: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-05-29 15:59:46 [INFO] api.detect_router: [detect] test.docx / docx / 0.910s
+2026-05-29 15:59:46 [INFO] uvicorn.access: 127.0.0.1:58455 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 16:01:12 [INFO] api.detect_router: [detect] trainset.xlsx / xlsx / 8.537s
+2026-05-29 16:01:12 [INFO] uvicorn.access: 127.0.0.1:63046 - "POST /api/detect HTTP/1.1" 200
+2026-05-29 16:02:23 [INFO] uvicorn.error: Shutting down
+2026-05-29 16:02:23 [INFO] uvicorn.error: Waiting for application shutdown.
+2026-05-29 16:02:23 [INFO] uvicorn.error: Application shutdown complete.
+2026-05-29 16:02:23 [INFO] uvicorn.error: Finished server process [13952]
