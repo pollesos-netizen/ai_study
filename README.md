@@ -1,6 +1,6 @@
 # 비식별화 도구 (De-identification Tool)
 
-사내 문서(xlsx, docx, pptx, hwpx, pdf)에 포함된 개인정보·민감정보를 탐지하고 비식별화 처리를 안내하는 FastAPI 기반 도구입니다.
+사내 문서(xlsx, csv, docx, pptx, hwpx, pdf)에 포함된 개인정보·민감정보를 탐지하고 비식별화 처리를 안내하는 FastAPI 기반 도구입니다.
 
 ---
 
@@ -38,6 +38,7 @@ uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --workers 1
 │   ├── api/                    # FastAPI 엔드포인트
 │   ├── feedback/               # 피드백 저장 모듈
 │   ├── regex_detector.py       # 정규식 탐지
+│   ├── csv_detector.py         # csv 탐지 + 비식별화 적용
 │   ├── docx_detector.py        # docx 탐지
 │   ├── pptx_detector.py        # pptx 탐지
 │   ├── hwpx_detector.py        # hwpx 탐지
@@ -56,11 +57,18 @@ uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --workers 1
 │   └── index.html              # HTML UI
 │
 ├── models/                     # 모델 파일 (별도 전달)
-│   ├── privacy_sentence_model_v3.pkl       # AI 분류 모델 (sklearn)
+│   ├── privacy_sentence_model_v6.pkl       # AI 분류 모델 (sklearn, 현재 운영)
 │   ├── privacy_cso_char_keras_model.keras  # AI 분류 모델 (keras, 선택)
 │   └── hf/KoELECTRA-small-v3-modu-ner/    # NER 성명 탐지 모델 (선택)
 │
+├── tools/                      # 데이터 수집·처리 도구
+│   ├── keywords.yaml           # C/S/O 분류 키워드 설정
+│   └── extract_candidates.py  # 매뉴얼 코퍼스 후보 추출 스크립트
+│
 ├── data/                       # 학습 데이터 및 테스트 샘플
+│   ├── privacy_sentence_sample_v6_merged.csv  # 현재 학습 데이터셋 (574건)
+│   └── manuals_md/             # 사내 매뉴얼 변환본 (26개 파일)
+│
 ├── notebooks/                  # 모델 학습·실험 스크립트
 ├── feedback_data/              # 사용자 피드백 JSON (서버 운영 중 자동 생성)
 ├── logs/                       # 서버 로그 (자동 생성)
@@ -96,7 +104,8 @@ uvicorn src.api.main:app --host 127.0.0.1 --port 8000 --workers 1
 
 | 파일 | 역할 |
 |------|------|
-| `regex_detector.py` | 이메일, 전화번호, IP, VLAN, 사번 등 정규식 패턴 탐지. `detect_patterns(text)` → Detection 목록 반환 |
+| `regex_detector.py` | 이메일, 전화번호, IP, VLAN, 사번, 신용카드번호, 운전면허번호 등 정규식 패턴 탐지 |
+| `csv_detector.py` | csv 행×열 순회 → regex/NER/AI 탐지 → 비식별화 적용 → 결과 csv 생성 |
 | `docx_detector.py` | docx 파일 단락·표 셀 순회 → regex/NER/AI 탐지 → `DeidentifyPlan` 생성 |
 | `pptx_detector.py` | pptx 슬라이드·도형·표 셀 순회 → 탐지 → `DeidentifyPlan` 생성 |
 | `hwpx_detector.py` | hwpx(한글) XML 파싱 → 단락·표 셀 순회 → 탐지 → `DeidentifyPlan` 생성 |
@@ -135,10 +144,13 @@ POST /api/detect (파일 + 옵션)
         │
         ▼
   detect_router.py
-  ├── 파일 형식 판별 (xlsx → applied, 나머지 → guide)
+  ├── 파일 형식 판별 (xlsx·csv → applied, 나머지 → guide)
   │
   ├── [xlsx] xlsx_deidentify_apply.py
   │     regex → NER → AI 탐지 후 셀 직접 수정 → 결과 파일 생성
+  │
+  ├── [csv] csv_detector.py
+  │     행×열 순회 → regex → NER → AI 탐지 → 마스킹 적용 → 결과 csv 생성
   │
   └── [docx/pptx/hwpx/pdf] *_detector.py
         단락/줄 순회
@@ -163,12 +175,12 @@ POST /api/detect (파일 + 옵션)
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `AI_MODEL_TYPE` | `keras` | `sklearn` \| `keras` |
-| `SKLEARN_MODEL_PATH` | `models/privacy_sentence_model_v3.pkl` | sklearn 모델 경로 |
-| `AI_MODEL_PATH` | `models/privacy_cso_char_keras_model.keras` | Keras 모델 경로 |
+| `AI_MODEL_TYPE` | `sklearn` | `sklearn` \| `keras` |
+| `SKLEARN_MODEL_PATH` | `models/privacy_sentence_model_v6.pkl` | sklearn 모델 경로 (현재 운영) |
+| `AI_MODEL_PATH` | `models/privacy_cso_char_keras_model.keras` | Keras 모델 경로 (선택) |
 | `NER_MODEL_PATH` | (없음) | NER 모델 경로. 미설정 시 NER 비활성 |
 | `NER_THRESHOLD` | `0.8` | NER 탐지 신뢰도 임계값 |
-| `AI_THRESHOLD` | `0.5` | AI 탐지 신뢰도 임계값 |
+| `AI_THRESHOLD` | `0.8` | AI 탐지 신뢰도 임계값 |
 | `FEEDBACK_DIR` | `feedback_data/` | 피드백 저장 디렉토리 |
 | `LOG_DIR` | `logs/` | 로그 저장 디렉토리 |
 
@@ -181,4 +193,6 @@ POST /api/detect (파일 + 옵션)
 | `src/api/README.md` | 서버 실행 상세 가이드 |
 | `reports/api_usage_guide.md` | API 응답 구조 및 활용 가이드 |
 | `reports/week17_detector_policy.md` | 탐지 소스 역할 분담 정책 |
+| `reports/week21_result.md` | 최신 개발 현황 보고서 |
 | `data/labeling_guide_v3.md` | AI 모델 학습 데이터 라벨링 기준 |
+| `notebooks/week20_worktask_taxonomy.md` | 사내 업무 민감정보 C/S/O 분류 체계 명세 |
